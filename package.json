@@ -1,0 +1,14 @@
+{
+  "name": "claude-agent-village",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A pixel-art village that shows what your Claude Code agents are doing. Runs only on your machine.",
+  "license": "MIT",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "install-hooks": "node install.js",
+    "remove-hooks": "node install.js --remove"
+  },
+  "engines": { "node": ">=18" }
+}

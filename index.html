@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Village (prototype v2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Mitr:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0e1830;--bg2:#1b2c52;--panel:#3a2416;--edge:#1f1208;--line:#7a5130;--accent:#f2c14e;--text:#fff3dc;--sub:#d9c29b;--chip:#2a190e;--px:3}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden}
+  body{background:radial-gradient(ellipse at 50% 30%,var(--bg2),var(--bg) 70%);color:var(--text);
+    font-family:"Pixelify Sans","Mitr","Leelawadee UI",system-ui,sans-serif;transition:background .5s}
+  button{font:inherit;color:inherit}
+  .app{display:grid;grid-template-columns:190px 1fr 270px;grid-template-rows:auto 1fr 118px;gap:10px;padding:10px;height:100vh}
+
+  .panel{background:var(--panel);border:3px solid var(--edge);border-radius:10px;
+    box-shadow:inset 0 0 0 2px var(--line),0 5px 0 #0007;transition:background .4s}
+  .ptitle{display:flex;align-items:center;gap:8px;padding:9px 12px 6px;font-weight:600;font-size:16px;color:var(--accent)}
+
+  /* top bar */
+  .top{grid-column:1/-1;display:flex;align-items:center;gap:10px;min-width:0}
+  .brand{display:flex;align-items:center;gap:10px;padding:8px 14px 8px 10px}
+  .brand .ic{font-size:30px;line-height:1}
+  .brand h1{margin:0;font-size:21px;line-height:1.05;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+  .brand .meta{font-size:12px;color:var(--sub);font-family:"Mitr",sans-serif}
+  .pill{display:flex;align-items:center;gap:6px;padding:8px 11px;font-size:19px;font-weight:600;white-space:nowrap}
+  @media (max-width:1400px){ .pill .lbl{display:none} .duty .lbl{display:inline} }
+  .pill .e{font-size:20px}
+  .pill small{font-size:12px;color:#7ee08a;font-weight:400}
+  .pill .lbl{font-size:11px;color:var(--sub);font-weight:400;font-family:"Mitr",sans-serif}
+  .pill.hot{background:#6a4a10;box-shadow:inset 0 0 0 2px #ffd54a,0 5px 0 #0007}
+  .duty{font-size:14px}
+  .duty i{width:10px;height:10px;border-radius:50%;background:#5fd16f;box-shadow:0 0 8px #5fd16f}
+  .spacer{flex:1}
+  .ctrl{display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:12px;font-family:"Mitr",sans-serif}
+  .seg{display:flex;border-radius:7px;overflow:hidden;border:2px solid var(--edge)}
+  .seg button{background:var(--chip);border:0;padding:4px 9px;cursor:pointer;font-family:"Pixelify Sans";font-size:13px}
+  .seg button.on{background:var(--accent);color:#2b1d14}
+  .ctrl label{display:flex;gap:5px;align-items:center;cursor:pointer;color:var(--sub)}
+  .ctrl input{accent-color:var(--accent)}
+
+  /* left */
+  .left{display:flex;flex-direction:column;gap:10px;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
+  .themeBtn{display:flex;align-items:center;gap:9px;width:calc(100% - 16px);margin:0 8px 6px;padding:9px 10px;border-radius:8px;cursor:pointer;
+    background:var(--chip);border:2px solid transparent;font-size:15px;text-align:left}
+  .themeBtn span{font-size:20px}
+  .themeBtn:hover:not(:disabled){border-color:var(--line)}
+  .themeBtn.on{background:var(--accent);color:#2b1d14;box-shadow:0 3px 0 #0006}
+  .themeBtn:disabled{opacity:.5;cursor:not-allowed;font-family:"Mitr";font-size:13px}
+  .themeBtn em{font-style:normal;font-size:10px;margin-left:auto;background:#0004;padding:1px 6px;border-radius:5px}
+  .left .panel{flex:none}
+  .bigbtn{width:calc(100% - 16px);margin:0 8px 8px;padding:9px;border-radius:8px;border:0;cursor:pointer;background:var(--accent);color:#2b1d14;font-weight:600;font-size:14px;box-shadow:0 3px 0 #0006}
+  .bigbtn:disabled{opacity:.4;cursor:default}
+  .hint{font-family:"Mitr";font-size:11.5px;color:var(--sub);padding:0 12px 12px;line-height:1.5}
+  .legend{font-family:"Mitr";font-size:11.5px;color:var(--sub);padding:0 12px 10px;display:grid;grid-template-columns:auto 1fr;gap:3px 8px;align-items:center}
+  .legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+  .modeRow{padding:0 8px 8px}
+  .modeRow .seg{width:100%}.modeRow .seg button{flex:1;padding:6px 4px}
+  .liveStat{display:flex;align-items:center;gap:7px;padding:0 12px 10px;font-family:"Mitr";font-size:12px;color:var(--sub)}
+  .acct{cursor:pointer;user-select:none;padding:0 12px 10px;font-family:"Mitr";font-size:11px;color:var(--sub);word-break:break-all}
+  .ld{flex:none;width:9px;height:9px;border-radius:50%;background:#9a8f80}
+  .ld.on{background:#ff4b3e;box-shadow:0 0 8px #ff4b3e;animation:blink 1.4s infinite}
+  .ld.off{background:#666}
+  @keyframes blink{50%{opacity:.4}}
+  .emptyHint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#000b;padding:14px 20px;border-radius:12px;text-align:center;
+    font-size:18px;border:2px solid var(--accent);pointer-events:none}
+  .emptyHint small{font-family:"Mitr";font-size:12.5px;color:var(--sub)}
+  /* map */
+  .mapcell{grid-column:2;grid-row:2;display:flex;align-items:center;justify-content:center;min-width:0;min-height:0;position:relative}
+  .stagebox{position:relative;border-radius:10px;overflow:hidden;box-shadow:0 0 0 3px var(--edge),0 0 0 6px var(--line),0 14px 40px #000a}
+  #map{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;cursor:pointer}
+  #overlay{position:absolute;inset:0;pointer-events:none}
+  .sign{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:5px;padding:3px 9px 3px 5px;border-radius:7px;
+    background:linear-gradient(#5a3820,#3e2614);border:2px solid #24150b;box-shadow:inset 0 0 0 1px #8a5c34,0 3px 0 #0006;white-space:nowrap;color:#ffeccb;z-index:50}
+  .sign .si{font-size:calc(var(--px)*5.5px)}
+  .sign b{display:block;font-size:calc(var(--px)*4.6px);line-height:1;font-weight:600}
+  .sign small{display:block;font-size:calc(var(--px)*3.1px);color:#e7c98f;font-family:"Mitr";line-height:1.2}
+  .sign.small{padding:2px 7px 2px 4px}
+  .sign.small b{font-size:calc(var(--px)*3.8px)}
+  .bub{position:absolute;left:0;top:0;background:#fffaf0;color:#2b1d14;border-radius:8px;padding:3px 7px 4px;font-family:"Mitr";font-size:11px;
+    white-space:nowrap;box-shadow:0 3px 0 #0004;border:2px solid #2b1d14;display:none;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+  .bub .ic{margin-right:3px}
+  .bub .bar{display:block;height:3px;background:#e4d6bd;border-radius:2px;margin-top:2px;overflow:hidden}
+  .bub .bar b{display:block;height:100%;background:#4fb35e;width:0}
+  .bub.perm{background:#ffe27a;pointer-events:auto;cursor:pointer;animation:nudge .9s infinite}
+  .bub.err{background:#ffcfc7}
+  .bub.boss{background:#fff3c4;border-color:#7a2a1a;z-index:600;font-weight:500}
+  @keyframes nudge{50%{margin-top:-3px}}
+  .tag{position:absolute;left:0;top:0;font-size:10px;padding:0 4px;border-radius:4px;background:#000a;color:#fff;border-bottom:2px solid var(--c);white-space:nowrap}
+  .tag.sub{font-size:9px;opacity:.85}
+  .puff{position:absolute;font-size:22px;transform:translate(-50%,-50%);animation:pop 1s forwards;z-index:999}
+  @keyframes pop{0%{opacity:0;scale:.4}25%{opacity:1;scale:1.25}100%{opacity:0;translate:0 -30px}}
+
+  /* right */
+  .right{grid-column:3;grid-row:2/4;display:flex;flex-direction:column;gap:10px;min-height:0}
+  .mission{background:linear-gradient(#f6ead2,#e8d6b4);color:#3a2416;border-color:#5a3820;box-shadow:inset 0 0 0 2px #fff6e0,0 5px 0 #0007}
+  .mission .ptitle{color:#7a2a1a}
+  .mission p{margin:0 12px;font-family:"Mitr";font-size:14px;text-align:center;font-weight:500}
+  .mbar{margin:8px 12px 4px;height:16px;border-radius:8px;background:#5a3820;border:2px solid #3a2416;overflow:hidden;position:relative}
+  .mbar b{display:block;height:100%;background:linear-gradient(#7be38a,#3fae55);width:0;transition:width .4s}
+  .mbar span{position:absolute;inset:0;text-align:center;font-size:11px;line-height:12px;color:#fff;text-shadow:0 1px 0 #000}
+  .mission .mt{font-family:"Mitr";font-size:12px;text-align:center;padding:2px 0 10px}
+  .activity{flex:1;display:flex;flex-direction:column;min-height:0}
+  #log{flex:1;overflow:auto;padding:0 8px 8px;font-family:"Mitr";font-size:12px}
+  .li{display:flex;gap:8px;padding:6px 6px;border-radius:7px;align-items:flex-start;animation:fadein .3s}
+  .li:nth-child(odd){background:#ffffff08}
+  .li>i{flex:none;width:9px;height:9px;border-radius:50%;margin-top:5px}
+  .li b{font-weight:500;color:#fff}
+  .li time{display:block;font-size:10px;color:var(--sub);opacity:.7}
+  .ptitle .mini{margin-left:auto;background:var(--chip);border:2px solid var(--edge);border-radius:7px;cursor:pointer;font-size:14px;padding:1px 7px}
+  .li.you>div{color:#fff}
+  .li.you .q{color:#ffe7a8}
+  .li.reply .q{color:#bfe8ff}
+  .li.tools>div{font-size:11px;color:var(--sub)}
+  .li.tools .q{color:var(--text)}
+  .hideText .q,.hideText .bub .tx,.hideText .card .st span,.hideText .card .subs{filter:blur(5px);user-select:none}
+  .li.good>div{color:#a9ecb1}.li.warn>div{color:#ffe08a}.li.bad>div{color:#ffaaa0}
+  @keyframes fadein{from{opacity:0;transform:translateY(-4px)}}
+  .minip{padding-bottom:8px}
+  #mini{display:block;width:calc(100% - 20px);margin:0 10px;image-rendering:pixelated;border-radius:6px;border:2px solid var(--edge)}
+
+  /* bottom agents */
+  .bottom{grid-column:1/3;grid-row:3;display:flex;align-items:stretch;min-width:0}
+  .bottom .ptitle{writing-mode:vertical-rl;transform:rotate(180deg);padding:10px 6px;font-size:14px;border-right:2px solid var(--line)}
+  #agents{flex:1;display:flex;gap:8px;padding:8px;overflow-x:auto;min-width:0}
+  .card{flex:none;width:190px;display:flex;gap:9px;padding:6px 9px 6px 6px;border-radius:8px;background:var(--chip);border:2px solid transparent;cursor:default}
+  .card.perm{border-color:#ffd54a;background:#4a3a12;cursor:pointer;animation:glow 1s infinite}
+  @keyframes glow{50%{box-shadow:0 0 12px #ffd54a88}}
+  .card .pt{width:56px;height:72px;image-rendering:pixelated;flex:none;background:#0003;border-radius:6px}
+  .card .cb{min-width:0;flex:1}
+  .card .nm{font-size:16px;font-weight:600;line-height:1.1}
+  .card .rl{font-size:11px;color:var(--sub);font-family:"Mitr"}
+  .card .st{display:flex;align-items:center;gap:5px;font-family:"Mitr";font-size:11.5px;margin-top:2px}
+  .card .st i{flex:none;width:9px;height:9px;border-radius:50%}
+  .card .st span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card .ctx{height:5px;border-radius:3px;background:#0005;margin-top:5px;overflow:hidden}
+  .card .ctx b{display:block;height:100%;background:var(--c);transition:width .4s}
+  .card .ctx b.full{background:#ff5a4e}
+  .card .subs{font-family:"Mitr";font-size:10px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+  .card.lead{width:170px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="panel brand"><span class="ic" id="titleIcon">🎄</span><div><h1 id="title">Agent Office</h1><div class="meta"><span id="loc"></span> · <span id="clock"></span></div></div></div>
+    <div class="panel pill"><span class="e unitIcon">🎁</span><span id="sDone">0</span><small id="sRate"></small><span class="lbl">ส่งแล้ว</span></div>
+    <div class="panel pill"><span class="e">⚡</span><span id="sTools">0</span><span class="lbl">tool calls</span></div>
+    <div class="panel pill"><span class="e">🧠</span><span id="sCtx">0%</span><span class="lbl">context เฉลี่ย</span></div>
+    <div class="panel pill" id="permPill"><span class="e">✋</span><span id="sPerm">0</span><span class="lbl">รออนุมัติ</span></div>
+    <div class="panel pill" id="limitPill" style="display:none"><span class="e">🔋</span><span id="sLimit"></span><span class="lbl">ลิมิต Pro</span></div>
+    <div class="panel pill duty"><i></i>On Duty <span id="sWorking" class="lbl"></span></div>
+    <div class="spacer"></div>
+    <div class="panel ctrl" id="demoCtrl">
+      <div class="seg" id="speed"><button data-s="0.5">0.5×</button><button data-s="1" class="on">1×</button><button data-s="2">2×</button><button data-s="4">4×</button></div>
+      <label><input type="checkbox" id="auto" checked>อนุมัติเองใน 6 วิ</label>
+    </div>
+  </header>
+
+  <aside class="left">
+    <div class="panel"><div class="ptitle">🎨 Themes</div><div id="themeList"></div></div>
+    <div class="panel">
+      <div class="ptitle">🧑‍🤝‍🧑 ทีม</div>
+      <div class="modeRow"><div class="seg" id="modeSeg"><button data-m="live">🔴 Live</button><button data-m="demo" class="on">🎲 จำลอง</button></div></div>
+      <div class="liveStat"><i id="liveDot" class="ld demo"></i><span id="liveText">ข้อมูลจำลอง</span></div>
+      <div class="acct" id="acct"></div>
+      <button class="bigbtn" id="addAgent">+ เพิ่ม agent</button>
+      <div class="hint">หน้านี้ดูอย่างเดียว อนุมัติ permission ในแอป Claude เหมือนเดิม</div>
+      <div class="legend">
+        <i style="background:#5fd16f"></i>ทำงาน <i style="background:#6fb6ff"></i>เดิน
+        <i style="background:#ffd54a"></i>รออนุมัติ <i style="background:#ff5a4e"></i>error
+        <i style="background:#c9a0ff"></i>กำลังคิด <i style="background:#9a8f80"></i>ว่าง
+      </div>
+    </div>
+  </aside>
+
+  <main class="mapcell" id="mapcell">
+    <div class="stagebox" id="stagebox">
+      <canvas id="map" width="400" height="240"></canvas>
+      <div id="overlay"></div>
+    </div>
+    <div id="emptyHint" class="emptyHint" style="display:none">🔴 Live พร้อมแล้ว<br><small>เปิดหรือพิมพ์อะไรสักอย่างใน session ของ Claude Code แล้วตัวละครจะโผล่มาที่นี่</small></div>
+  </main>
+
+  <aside class="right">
+    <div class="panel mission">
+      <div class="ptitle">🎯 Current Mission</div>
+      <p id="missionTitle"></p>
+      <div class="mbar"><b id="missionBar"></b><span id="missionNum"></span></div>
+      <div class="mt" id="missionTime"></div>
+    </div>
+    <div class="panel activity"><div class="ptitle">📈 Agent Activity<button id="hideTxt" class="mini">👁️</button></div><div id="log"></div></div>
+    <div class="panel minip"><div class="ptitle">🗺️ Map</div><canvas id="mini" width="200" height="120"></canvas></div>
+  </aside>
+
+  <section class="panel bottom"><div class="ptitle">⭐ Our Agents</div><div id="agents"></div></section>
+</div>
+
+<script src="js/pixel.js"></script>
+<script src="themes/christmas.js"></script>
+<script src="themes/kitchen.js"></script>
+<script src="themes/floating-market.js"></script>
+<script src="js/engine.js"></script>
+</body>
+</html>
