@@ -80,6 +80,14 @@
   .sign small{display:block;font-size:calc(var(--px)*3.1px);color:#e7c98f;font-family:"Mitr";line-height:1.2}
   .sign.small{padding:2px 7px 2px 4px}
   .sign.small b{font-size:calc(var(--px)*3.8px)}
+  #overlay[data-signs=big] .sign{gap:calc(var(--px)*2px);padding:calc(var(--px)*1.4px) calc(var(--px)*3.6px) calc(var(--px)*1.6px) calc(var(--px)*1.6px);border-radius:calc(var(--px)*2.6px);
+    background:linear-gradient(#6b4326,#3e2614 70%);border:calc(var(--px)*.7px) solid #1f1208;box-shadow:inset 0 0 0 calc(var(--px)*.5px) #c48a4a,0 calc(var(--px)*1px) 0 #0007}
+  #overlay[data-signs=big] .sign::after{content:"";position:absolute;left:50%;bottom:calc(var(--px)*-2.2px);transform:translateX(-50%);border:calc(var(--px)*1.6px) solid transparent;border-top-color:#3e2614;border-bottom:0}
+  #overlay[data-signs=big] .sign .si{display:grid;place-items:center;width:calc(var(--px)*7.5px);height:calc(var(--px)*7.5px);font-size:calc(var(--px)*5.4px);background:#fff3dc;border-radius:calc(var(--px)*1.6px);box-shadow:inset 0 0 0 calc(var(--px)*.4px) #c48a4a}
+  #overlay[data-signs=big] .sign b{font-size:calc(var(--px)*5.4px);color:#fff;text-shadow:0 1px 0 #0008}
+  #overlay[data-signs=big] .sign small{font-size:calc(var(--px)*3.4px);color:#f2d9a8}
+  #overlay[data-signs=big] .sign.small .si{width:calc(var(--px)*6px);height:calc(var(--px)*6px);font-size:calc(var(--px)*4.2px)}
+  #overlay[data-signs=big] .sign.small b{font-size:calc(var(--px)*4.4px)}
   .bub{position:absolute;left:0;top:0;background:#fffaf0;color:#2b1d14;border-radius:8px;padding:3px 7px 4px;font-family:"Mitr";font-size:11px;
     white-space:nowrap;box-shadow:0 3px 0 #0004;border:2px solid #2b1d14;display:none;max-width:200px;overflow:hidden;text-overflow:ellipsis}
   .bub .ic{margin-right:3px}

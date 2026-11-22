@@ -480,6 +480,7 @@
     document.querySelectorAll('.unitIcon').forEach(e => e.textContent = theme.unitIcon);
     $('#missionTitle').textContent = theme.mission.title;
     overlay.querySelectorAll('.sign').forEach(s => s.remove());
+    overlay.dataset.signs = theme.signStyle || '';
     for (const s of theme.signs) {
       const d = document.createElement('div'); d.className = 'sign' + (s.small ? ' small' : '');
       d.dataset.x = s.x; d.dataset.y = s.y;
