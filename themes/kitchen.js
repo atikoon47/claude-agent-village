@@ -3,11 +3,11 @@
   const R = PX.rect;
   const FOOD = ['#e8553f', '#7fc35a', '#f2a03a', '#c9863f', '#f4d35e'];
 
-  function counter(c, x, y, w, h, top = '#e6dcc8', edge = '#8a6a4a', drawers = true) {
+  function counter(c, x, y, w, h, top = '#cdd6dc', edge = '#6e7b85', drawers = true) {
     R(c, x + 2, y + h, w, 2, 'rgba(0,0,0,.2)');
     R(c, x, y, w, h, edge); R(c, x, y, w, 6, top); R(c, x, y, w, 1, PX.shade(top, .4)); R(c, x, y + 6, w, 1, PX.shade(edge, -.3));
     if (drawers) for (let i = x + 2; i < x + w - 8; i += 14) {
-      R(c, i, y + 8, 12, h - 10, PX.shade(edge, .12)); R(c, i, y + h - 3, 12, 1, PX.shade(edge, -.25)); R(c, i + 5, y + 10, 3, 1, '#e7c98f');
+      R(c, i, y + 8, 12, h - 10, PX.shade(edge, .12)); R(c, i, y + h - 3, 12, 1, PX.shade(edge, -.25)); R(c, i + 5, y + 10, 3, 1, PX.shade(top, .5));
     }
   }
   function plant(c, x, y, s = 1) {
@@ -96,6 +96,12 @@
         R(c, x, y, w, 10, '#3a3f45'); R(c, x + 1, y + 1, w - 2, 8, '#4a3a34'); for (let i = x + 3; i < x + w - 2; i += 3) R(c, i, y + 2, 1, 6, '#5a463e');
       }
 
+      // cool blue-tile backsplash behind the work stations
+      for (const [x0, x1] of [[20, 128], [274, 378]]) {
+        R(c, x0, 22, x1 - x0, 13, '#a9cfdc');
+        for (let y = 22; y < 35; y += 4) { R(c, x0, y + 3, x1 - x0, 1, '#7fa8b8'); for (let x = x0 + ((y - 22) / 4 % 2) * 3; x < x1; x += 6) R(c, x, y, 1, 3, '#7fa8b8'); }
+        R(c, x0, 22, x1 - x0, 1, '#d6eef5'); R(c, x0 - 1, 21, 1, 14, '#5c3a22'); R(c, x1, 21, 1, 14, '#5c3a22');
+      }
       // ── Prep station: utensil rail, boards of veg, salad bowl, little sink
       R(c, 30, 22, 96, 1, '#2b2b30');
       for (let i = 0; i < 9; i++) { const x = 34 + i * 10; R(c, x, 23, 1, 3, '#2b2b30');

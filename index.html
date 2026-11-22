@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agent Village (prototype v2)</title>
+<title>Agent Village</title>
+<link rel="icon" id="favicon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Mitr:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -13,6 +14,9 @@
   body{background:radial-gradient(ellipse at 50% 30%,var(--bg2),var(--bg) 70%);color:var(--text);
     font-family:"Pixelify Sans","Mitr","Leelawadee UI",system-ui,sans-serif;transition:background .5s}
   button{font:inherit;color:inherit}
+  :focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+  ::selection{background:var(--accent);color:#2b1d14}
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
   .app{display:grid;grid-template-columns:190px 1fr 270px;grid-template-rows:auto 1fr 118px;gap:10px;padding:10px;height:100vh}
 
   .panel{background:var(--panel);border:3px solid var(--edge);border-radius:10px;
@@ -30,7 +34,22 @@
   .pill .e{font-size:20px}
   .pill small{font-size:12px;color:#7ee08a;font-weight:400}
   .pill .lbl{font-size:11px;color:var(--sub);font-weight:400;font-family:"Mitr",sans-serif}
-  .pill.hot{background:#6a4a10;box-shadow:inset 0 0 0 2px #ffd54a,0 5px 0 #0007}
+  /* waiting-for-approval: the one state that needs the user, so it owns the loudest treatment */
+  #permPill{transition:opacity .3s,background .3s}
+  #permPill:not(.hot){opacity:.5}
+  #permPill.hot{background:#ffd54a;color:#2b1d14;font-size:22px;padding:8px 14px;box-shadow:inset 0 0 0 3px #2b1d14,0 5px 0 #0007;animation:ask 1.6s ease-out infinite}
+  #permPill.hot .lbl{display:inline;color:#2b1d14;font-size:13px;font-weight:500}
+  @keyframes ask{0%{box-shadow:inset 0 0 0 3px #2b1d14,0 5px 0 #0007,0 0 0 0 #ffd54acc}70%{box-shadow:inset 0 0 0 3px #2b1d14,0 5px 0 #0007,0 0 0 12px #ffd54a00}}
+  .permBand{position:absolute;left:50%;top:calc(var(--px)*3px);transform:translateX(-50%);z-index:700;display:flex;align-items:center;gap:8px;max-width:calc(100% - 24px);
+    padding:6px 12px 6px 8px;border-radius:9px;background:#ffd54a;color:#2b1d14;border:2px solid #2b1d14;box-shadow:0 4px 10px #0006;
+    font-family:"Mitr",sans-serif;font-size:13px;line-height:1.35;white-space:nowrap}
+  .permBand[hidden]{display:none}
+  .permBand .h{font-size:20px;line-height:1}
+  .permBand b{font-weight:500}
+  .permBand .what{overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:28ch;background:#fff6c9;border-radius:5px;padding:0 6px}
+  .permBand .how{opacity:.85}
+  .permBand .more{background:#2b1d14;color:#ffd54a;border-radius:5px;padding:0 6px;font-size:12px}
+  .permBand .more:empty{display:none}
   .duty{font-size:14px}
   .duty i{width:10px;height:10px;border-radius:50%;background:#5fd16f;box-shadow:0 0 8px #5fd16f}
   .spacer{flex:1}
@@ -135,7 +154,10 @@
   .bottom .ptitle{writing-mode:vertical-rl;transform:rotate(180deg);padding:10px 6px;font-size:14px;border-right:2px solid var(--line)}
   #agents{flex:1;display:flex;gap:8px;padding:8px;overflow-x:auto;min-width:0}
   .card{flex:none;width:190px;display:flex;gap:9px;padding:6px 9px 6px 6px;border-radius:8px;background:var(--chip);border:2px solid transparent;cursor:default}
-  .card.perm{border-color:#ffd54a;background:#4a3a12;cursor:pointer;animation:glow 1s infinite}
+  .card.perm{border:2px dashed #ffd54a;background:#4a3a12;cursor:pointer;animation:glow 1.6s ease-out infinite}
+  .card.perm .st i{background:none!important;width:auto;height:auto;font-style:normal;font-size:12px}
+  .card.perm .st i::before{content:"✋"}
+  .card.perm .st span{color:#ffe27a;font-weight:500}
   @keyframes glow{50%{box-shadow:0 0 12px #ffd54a88}}
   .card .pt{width:48px;height:75px;image-rendering:pixelated;flex:none;background:#0003;border-radius:6px}
   .card .cb{min-width:0;flex:1}
@@ -149,33 +171,67 @@
   .card .ctx b.full{background:#ff5a4e}
   .card .subs{font-family:"Mitr";font-size:10px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
   .card.lead{width:170px}
+
+  /* ---- side-by-side with Claude Desktop: give the map the room ---- */
+  .compactBar,.actFoot:empty{display:none}
+  .actFoot{border-top:2px solid var(--line);margin:0 8px;padding-top:8px}
+  .actFoot .liveStat,.actFoot .acct,.actFoot .hint{padding-left:4px;padding-right:4px}
+  .actFoot .hint{padding-bottom:8px}
+  .actFoot .ctrl{background:none;border:0;box-shadow:none;padding:0 4px 8px;justify-content:space-between}
+  @media (max-width:1500px){ .minip{display:none} }
+  body.compact .app{grid-template-columns:minmax(0,1fr) 240px;gap:8px;padding:8px}
+  body.compact .left{display:none}
+  body.compact .mapcell{grid-column:1}
+  body.compact .right{grid-column:2}
+  body.compact .bottom{grid-column:1}
+  body.compact .compactBar{display:flex;align-items:center;gap:6px;padding:5px 7px}
+  .compactBar .tb{background:var(--chip);border:2px solid transparent;border-radius:7px;font-size:18px;line-height:1;padding:4px 6px;cursor:pointer}
+  .compactBar .tb:hover{border-color:var(--line)}
+  .compactBar .tb.on{background:var(--accent);border-color:var(--edge)}
+  .compactBar #modeSeg button{padding:4px 8px}
+  .compactBar .bigbtn{width:auto;margin:0;padding:4px 9px;font-size:13px}
+  body.compact .top{gap:7px}
+  body.compact .brand{padding:6px 10px 6px 8px}
+  body.compact .brand .ic{font-size:24px}
+  body.compact .brand h1{font-size:16px}
+  body.compact .pill{padding:6px 8px;font-size:16px}
+  body.compact .pill .e{font-size:17px}
+  body.compact .ctrl label span{display:none}
+  body.compact .card{width:172px}
+  .compactBar #modeSeg{flex-wrap:nowrap}
+  .compactBar #modeSeg button{white-space:nowrap}
+  body.compact .bigbtn .t,body.compact #sRate,body.compact .duty .dl,body.compact .brand .meta #loc,body.compact .brand .meta .dot{display:none}
+  body.compact .duty{gap:5px}
+  body.compact .ctrl{padding:5px 7px;gap:6px}
+  body.compact .seg button{padding:4px 6px}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
-    <div class="panel brand"><span class="ic" id="titleIcon">🎄</span><div><h1 id="title">Agent Office</h1><div class="meta"><span id="loc"></span> · <span id="clock"></span></div></div></div>
-    <div class="panel pill"><span class="e unitIcon">🎁</span><span id="sDone">0</span><small id="sRate"></small><span class="lbl">ส่งแล้ว</span></div>
-    <div class="panel pill"><span class="e">⚡</span><span id="sTools">0</span><span class="lbl">tool calls</span></div>
-    <div class="panel pill"><span class="e">🧠</span><span id="sCtx">0%</span><span class="lbl">context เฉลี่ย</span></div>
-    <div class="panel pill" id="permPill"><span class="e">✋</span><span id="sPerm">0</span><span class="lbl">รออนุมัติ</span></div>
+    <div class="panel brand"><span class="ic" id="titleIcon">🎄</span><div><h1 id="title">Agent Office</h1><div class="meta"><span id="loc"></span><span class="dot"> · </span><span id="clock"></span></div></div></div>
+    <div class="panel pill" id="permPill" title="งานที่รอคุณอนุมัติในแอป Claude" aria-live="assertive"><span class="e" aria-hidden="true">✋</span><span id="sPerm">0</span><span class="lbl">รออนุมัติ</span></div>
+    <div class="panel pill" title="งานที่ส่งเสร็จ"><span class="e unitIcon">🎁</span><span id="sDone">0</span><small id="sRate"></small><span class="lbl">ส่งแล้ว</span></div>
+    <div class="panel pill" title="จำนวนครั้งที่เรียกเครื่องมือ"><span class="e">⚡</span><span id="sTools">0</span><span class="lbl">tool calls</span></div>
+    <div class="panel pill" title="context เฉลี่ยของทุก agent"><span class="e">🧠</span><span id="sCtx">0%</span><span class="lbl">context เฉลี่ย</span></div>
     <div class="panel pill" id="limitPill" style="display:none"><span class="e">🔋</span><span id="sLimit"></span><span class="lbl">ลิมิต Pro</span></div>
-    <div class="panel pill duty"><i></i>On Duty <span id="sWorking" class="lbl"></span></div>
+    <div class="panel pill duty" title="agent ที่กำลังทำงาน / ทั้งหมด"><i></i><span class="dl">On Duty </span><span id="sWorking" class="lbl"></span></div>
     <div class="spacer"></div>
+    <div class="panel compactBar" id="compactBar"><span id="themeMini" style="display:flex;gap:4px"></span></div>
     <div class="panel ctrl" id="demoCtrl">
       <div class="seg" id="speed"><button data-s="0.5">0.5×</button><button data-s="1" class="on">1×</button><button data-s="2">2×</button><button data-s="4">4×</button></div>
-      <label><input type="checkbox" id="auto" checked>อนุมัติเองใน 6 วิ</label>
+      <label title="อนุมัติเองใน 6 วิ (จำลอง)"><input type="checkbox" id="auto" checked><span>อนุมัติเองใน 6 วิ</span></label>
     </div>
   </header>
 
   <aside class="left">
     <div class="panel"><div class="ptitle">🎨 Themes</div><div id="themeList"></div></div>
-    <div class="panel">
+    <div class="panel" id="teamPanel">
       <div class="ptitle">🧑‍🤝‍🧑 ทีม</div>
       <div class="modeRow"><div class="seg" id="modeSeg"><button data-m="live">🔴 Live</button><button data-m="demo" class="on">🎲 จำลอง</button></div></div>
       <div class="liveStat"><i id="liveDot" class="ld demo"></i><span id="liveText">ข้อมูลจำลอง</span></div>
       <div class="acct" id="acct"></div>
-      <button class="bigbtn" id="addAgent">+ เพิ่ม agent</button>
+      <button class="bigbtn" id="addAgent" title="เพิ่ม agent จำลอง">+<span class="t"> เพิ่ม agent</span></button>
       <div class="hint">หน้านี้ดูอย่างเดียว อนุมัติ permission ในแอป Claude เหมือนเดิม</div>
       <div class="legend">
         <i style="background:#5fd16f"></i>ทำงาน <i style="background:#6fb6ff"></i>เดิน
@@ -189,6 +245,7 @@
     <div class="stagebox" id="stagebox">
       <canvas id="map" width="400" height="240"></canvas>
       <div id="overlay"></div>
+      <div id="permBand" class="permBand" hidden><span class="h" aria-hidden="true">✋</span><span><b class="who"></b> รออนุมัติ</span><span class="what"></span><span class="how"></span><span class="more"></span></div>
     </div>
     <div id="emptyHint" class="emptyHint" style="display:none">🔴 Live พร้อมแล้ว<br><small>เปิดหรือพิมพ์อะไรสักอย่างใน session ของ Claude Code แล้วตัวละครจะโผล่มาที่นี่</small></div>
   </main>
@@ -200,7 +257,7 @@
       <div class="mbar"><b id="missionBar"></b><span id="missionNum"></span></div>
       <div class="mt" id="missionTime"></div>
     </div>
-    <div class="panel activity"><div class="ptitle">📈 Agent Activity<button id="hideTxt" class="mini">👁️</button></div><div id="log"></div></div>
+    <div class="panel activity"><div class="ptitle">📈 Agent Activity<button id="hideTxt" class="mini">👁️</button></div><div id="log" aria-live="polite"></div><div class="actFoot" id="actFoot"></div></div>
     <div class="panel minip"><div class="ptitle">🗺️ Map</div><canvas id="mini" width="200" height="120"></canvas></div>
   </aside>
 

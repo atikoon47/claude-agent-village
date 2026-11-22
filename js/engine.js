@@ -22,6 +22,7 @@
   const DANGER = ['Bash git push', 'Bash rm -rf dist', 'Bash npm install lodash', 'WebFetch api.example.com', 'Bash git commit'];
   const TASKS = ['แก้บั๊กหน้า login', 'เพิ่ม dark mode', 'เขียนเทส API', 'ทำหน้า dashboard', 'อัปเดต README', 'รีแฟกเตอร์ utils', 'แก้ CSS มือถือ', 'เพิ่มปุ่ม export'];
   const CREW = [['Bobby', '#2f9a57'], ['Lily', '#3a7bd5'], ['Max', '#d8443a'], ['Momo', '#e0a526'], ['Pip', '#9b59b6'], ['Juni', '#1aa39a'], ['Cocoa', '#b86a2c']];
+  const MODE_NAME = { live: 'ทำงาน', work: 'ทำงาน', walk: 'เดิน', follow: 'เดิน', perm: 'รออนุมัติ', error: 'error', compact: 'บีบ context', deposit: 'ส่งของ', idle: 'ว่าง' };
   const MODE_COL = { live: '#5fd16f', work: '#5fd16f', walk: '#6fb6ff', follow: '#6fb6ff', perm: '#ffd54a', error: '#ff5a4e', compact: '#ff9ad5', deposit: '#ffa94d', idle: '#9a8f80' };
 
   let theme, speed = 1, autoApprove = true, delivered = 0, toolCalls = 0, clock = 0, nextId = 0, crewNext = 0, scale = 1;
@@ -487,7 +488,7 @@
       d.innerHTML = `<span class="si">${s.icon}</span><span><b>${s.text}</b><small>${s.sub}</small></span>`;
       overlay.prepend(d);
     }
-    document.querySelectorAll('.themeBtn').forEach(b => b.classList.toggle('on', b.dataset.id === theme.id));
+    document.querySelectorAll('.themeBtn,.tb').forEach(b => b.classList.toggle('on', b.dataset.id === theme.id));
     bossHome();
     for (const a of agents) { const p = targetXY(a); a.x = p.x; a.y = p.y; if (a.cur && a.cur.type === 'perm') { const q = targetXY(a); a.x = q.x; a.y = q.y; } }
     history.replaceState(null, '', '#' + theme.id);
@@ -516,10 +517,34 @@
     }
     $('#leadCard')?.remove(); lead.id = 'leadCard';
   }
+  // Tab title + favicon carry the "waiting for you" state, so it is visible from the taskbar while you work in Claude.
+  let favChar = '', lastTitle = '';
+  function setFavicon(ch) {
+    if (ch === favChar) return; favChar = ch;
+    const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+    g.font = '52px "Segoe UI Emoji","Apple Color Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ch, 32, 36);
+    $('#favicon').href = c.toDataURL();
+  }
+  function updateAttention() {
+    const pq = permQueue.filter(a => agents.includes(a)), n = pq.length;
+    const title = n ? `✋ (${n}) รออนุมัติ — ${pq[0].name}` : `${theme.icon} ${theme.title} · Agent Village`;
+    if (title !== lastTitle) { document.title = title; lastTitle = title; }
+    setFavicon(n ? '✋' : theme.icon);
+    const band = $('#permBand');
+    band.hidden = !n;
+    if (n) {
+      const a = pq[0];
+      band.querySelector('.who').textContent = a.name;
+      band.querySelector('.what').textContent = String(a.status || '').replace(/^รออนุมัติ:\s*/, '');
+      band.querySelector('.how').textContent = mode === 'live' ? '→ กดอนุมัติในแอป Claude' : '→ คลิกตัวละครเพื่ออนุมัติ (จำลอง)';
+      band.querySelector('.more').textContent = n > 1 ? `+${n - 1} รายการ` : '';
+    }
+  }
   function updatePanels() {
+    updateAttention();
     for (const a of agents.filter(a => !a.isSub && a.card)) {
       const c = a.card, i = c.querySelector('.st i');
-      i.style.background = MODE_COL[a.mode] || '#999';
+      i.style.background = MODE_COL[a.mode] || '#999'; i.title = MODE_NAME[a.mode] || '';
       c.querySelector('.st span').textContent = a.status;
       const b = c.querySelector('.ctx b'); b.style.width = a.ctx * 100 + '%'; b.classList.toggle('full', a.ctx > .8);
       c.querySelector('.ctx').title = a.ctxTokens ? `context ${Math.round(a.ctxTokens / 1000)}k tokens` : 'context';
@@ -588,6 +613,25 @@
     speed = +b.dataset.s; document.querySelectorAll('#speed button').forEach(x => x.classList.toggle('on', x === b));
   });
   $('#auto').onchange = e => autoApprove = e.target.checked;
+  // compact layout (≤1280px): move the few controls the left column held into the top bar / activity panel
+  for (const id of THEME_ORDER) {
+    const t = THEMES[id], b = document.createElement('button');
+    b.className = 'tb'; b.dataset.id = id; b.textContent = t.icon; b.title = t.name; b.setAttribute('aria-label', t.name);
+    b.onclick = () => setTheme(id); $('#themeMini').appendChild(b);
+  }
+  const compactQ = matchMedia('(max-width:1280px)');
+  function applyCompact() {
+    const on = compactQ.matches, team = $('#teamPanel'), add = $('#addAgent');
+    document.body.classList.toggle('compact', on);
+    if (on) { $('#compactBar').append($('#modeSeg'), add); $('#actFoot').append($('#demoCtrl'), $('.liveStat'), $('#acct'), $('.hint')); }
+    else {
+      $('.modeRow').appendChild($('#modeSeg')); $('.top').appendChild($('#demoCtrl'));
+      team.insertBefore($('.liveStat'), $('.legend')); team.insertBefore($('#acct'), $('.legend'));
+      team.insertBefore(add, $('.legend')); team.insertBefore($('.hint'), $('.legend'));
+    }
+    fit();
+  }
+  compactQ.addEventListener('change', applyCompact); applyCompact();
   $('#addAgent').onclick = addAgent;
   document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => setMode(b.dataset.m));
   cv.addEventListener('click', e => {
