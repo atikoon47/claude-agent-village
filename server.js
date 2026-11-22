@@ -4,7 +4,12 @@
 //  - GET  /stream : pushes those events to the page (Server-Sent Events)
 // It never calls Claude or any outside service.
 const http = require('http'), fs = require('fs'), path = require('path');
-const ROOT = __dirname, PORT = 5179;
+const ROOT = __dirname, PORT = +process.env.PORT || 5179;
+// Safety: only answer requests addressed to this machine by name (blocks DNS-rebinding pages from reading /stream).
+const ALLOWED_HOSTS = new Set([`localhost:${PORT}`, `127.0.0.1:${PORT}`, `[::1]:${PORT}`]);
+// Only transcripts inside Claude Code's own projects folder may be read (and only their token counts).
+const PROJECTS_DIR = path.join(require('os').homedir(), '.claude', 'projects');
+const norm = f => process.platform === 'win32' ? f.toLowerCase() : f;
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
 const clients = new Set();
 const sessions = new Map();   // sid -> { sid, project, last, ctxTokens, ended }
@@ -26,7 +31,10 @@ function broadcast(obj) { const s = `data: ${JSON.stringify(obj)}\n\n`; for (con
 // Read only the tail of the local transcript to find the latest context size.
 function ctxFromTranscript(file) {
   try {
-    if (!file || !file.endsWith('.jsonl')) return null;
+    if (typeof file !== 'string' || !file.endsWith('.jsonl')) return null;
+    const full = path.resolve(file);
+    if (!norm(full).startsWith(norm(PROJECTS_DIR + path.sep))) return null;
+    file = full;
     const st = fs.statSync(file), len = Math.min(st.size, 256 * 1024);
     const fd = fs.openSync(file, 'r'), buf = Buffer.alloc(len);
     fs.readSync(fd, buf, 0, len, st.size - len); fs.closeSync(fd);
@@ -58,8 +66,11 @@ function onHook(e) {
 }
 
 http.createServer((req, res) => {
+  if (!ALLOWED_HOSTS.has(String(req.headers.host || '').toLowerCase())) { res.writeHead(421); return res.end(); }
   const url = new URL(req.url, 'http://127.0.0.1');
   if (req.method === 'POST' && url.pathname === '/hook') {
+    // The hook scripts are plain Node requests; browsers always add Origin to cross-site POSTs, so reject those.
+    if (req.headers.origin || req.headers['sec-fetch-site']) { res.writeHead(403); return res.end(); }
     let body = '';
     req.on('data', d => { body += d; if (body.length > 64 * 1024) req.destroy(); });
     req.on('end', () => { try { onHook(JSON.parse(body)); } catch { } res.writeHead(204); res.end(); });
@@ -75,9 +86,12 @@ http.createServer((req, res) => {
     req.on('close', () => { clearInterval(ping); clients.delete(res); });
     return;
   }
-  let p = decodeURIComponent(url.pathname); if (p === '/') p = '/index.html';
+  if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); return res.end(); }
+  let p; try { p = decodeURIComponent(url.pathname); } catch { res.writeHead(400); return res.end(); }
+  if (p === '/') p = '/index.html';
   const file = path.normalize(path.join(ROOT, p));
-  if (!file.startsWith(ROOT + path.sep)) { res.writeHead(403); return res.end(); }
+  // stay inside the project and never serve dot-folders such as .git or .claude
+  if (!file.startsWith(ROOT + path.sep) || path.relative(ROOT, file).split(path.sep).some(x => x.startsWith('.'))) { res.writeHead(403); return res.end(); }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); return res.end('not found'); }
     res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
