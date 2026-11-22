@@ -496,19 +496,19 @@
 
   /* ---------------- panels ---------------- */
   function portrait(drawFn) {
-    const c = document.createElement('canvas'); c.width = 14; c.height = 18; c.className = 'pt';
+    const c = document.createElement('canvas'); c.width = 16; c.height = 25; c.className = 'pt';
     const g = c.getContext('2d'); drawFn(g); return c;
   }
   function renderCards() {
     if (!theme) return;
     const bar = $('#agents'); bar.innerHTML = '';
     const lead = document.createElement('div'); lead.className = 'card lead';
-    lead.appendChild(portrait(g => theme.drawLeadPortrait(g, 7, 17)));
+    lead.appendChild(portrait(g => theme.drawLeadPortrait(g, 8, 23)));
     lead.insertAdjacentHTML('beforeend', `<div class="cb"><div class="nm">${theme.lead.name}</div><div class="rl">${theme.lead.title}</div><div class="st"><i></i><span></span></div></div>`);
     bar.appendChild(lead);
     for (const a of agents.filter(a => !a.isSub)) {
       const c = document.createElement('div'); c.className = 'card'; c.style.setProperty('--c', a.color);
-      c.appendChild(portrait(g => (theme.drawPortrait || theme.drawChar).call(theme, g, { ...a, x: 7, y: 17, flip: false, mode: 'idle', walking: false, carry: false }, 0, 0)));
+      c.appendChild(portrait(g => (theme.drawPortrait || theme.drawChar).call(theme, g, { ...a, x: 8, y: 23, flip: false, mode: 'idle', walking: false, carry: false }, 0, 0)));
       c.insertAdjacentHTML('beforeend', `<div class="cb"><div class="nm">${a.name}</div><div class="rl">${a.project ? '📁 ' + a.project : theme.crew[a.crewIdx]}</div><div class="st"><i></i><span></span></div><div class="ctx" title="context"><b></b></div><div class="subs"></div></div>`);
       c.onclick = () => approve(a, true);
       a.card = c; bar.appendChild(c);
@@ -630,7 +630,7 @@
       const jit = a.mode === 'error' ? Math.round(Math.sin(t * 30)) : 0;
       theme.drawChar(ctx, { ...a, x: a.x + jit }, frameN, t);
       if (a.carry) theme.drawCarry(ctx, Math.round(a.x), Math.round(a.y));
-      a.bub.style.transform = `translate(${a.x * scale}px,${(a.y - 17) * scale}px) translate(-50%,-100%)`;
+      a.bub.style.transform = `translate(${a.x * scale}px,${(a.y - 22) * scale}px) translate(-50%,-100%)`;
       a.tag.style.transform = `translate(${a.x * scale}px,${(a.y + 1) * scale}px) translate(-50%,0)`;
       a.bub.classList.toggle('perm', a.mode === 'perm' && !a.approved);
       a.bub.classList.toggle('err', a.mode === 'error');
@@ -644,7 +644,7 @@
     theme.drawWeather(ctx, t, rdt);
     { const seat = theme.leadSeat || bossFront(), bx = boss.atDesk ? seat.x : boss.x, by = boss.atDesk ? seat.y : boss.y;
       bossBub.style.display = performance.now() < bossSayUntil ? 'block' : 'none';
-      bossBub.style.transform = `translate(${bx * scale}px,${(by - (boss.atDesk ? 18 : 17)) * scale}px) translate(-50%,-100%)`; }
+      bossBub.style.transform = `translate(${bx * scale}px,${(by - 23) * scale}px) translate(-50%,-100%)`; }
     panelT += rdt; if (panelT > .25) { panelT = 0; updatePanels(); }
     if (!stepping) requestAnimationFrame(frame);
   }

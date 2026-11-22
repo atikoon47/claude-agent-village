@@ -149,7 +149,7 @@
         frame, work: a.mode === 'work', t, flip: a.flip });
       if (a.isSub) { R(c, a.x - 3, a.y - 11, 6, 2, a.color); }
     },
-    drawCarry(c, x, y) { PX.ellipse(c, x, y - 17, 5, 2, '#fff'); PX.ellipse(c, x, y - 18, 3, 1, '#e8553f'); },
+    drawCarry(c, x, y) { PX.ellipse(c, x + 6, y - 7, 6, 2, '#24160f'); PX.ellipse(c, x + 6, y - 7, 5, 1, '#fff'); PX.ellipse(c, x + 6, y - 9, 3, 1, '#e8553f'); PX.rect(c, x + 5, y - 10, 2, 1, '#7bc96f'); },
     drawLeadPortrait(c, x, y) { PX.person(c, x, y, { top: '#2b2b30', pants: '#2b2b30', hat: 'chefLead', collar: '#fff' }); },
   });
 })();

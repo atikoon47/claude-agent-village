@@ -56,10 +56,12 @@
       PX.ellipse(c, x, y + 2, L / 2 + 1, 2, 'rgba(10,50,50,.35)');
     }
     PX.person(c, px, fy, { top: a.color, pants: '#2b2f4a', hat: 'none', frame: 0, work: a.mode === 'work', t, flip: a.flip });
-    if (a.isSub) { R(c, px - 3, fy - 10, 6, 1, '#2b1d14'); R(c, px - 3, fy - 9, 6, 1, a.color); }
+    if (a.isSub) { R(c, px - 4, fy - 13, 8, 1, a.color); R(c, px + 3, fy - 13, 2, 2, a.color); }
     else { // งอบ conical hat
-      R(c, px - 6, fy - 10, 12, 1, '#b8904a'); R(c, px - 5, fy - 11, 10, 1, '#d8b46a');
-      R(c, px - 3, fy - 12, 6, 1, '#e4c47e'); R(c, px - 1, fy - 13, 2, 1, '#efd596');
+      R(c, px - 8, fy - 15, 16, 3, '#24160f'); R(c, px - 6, fy - 17, 12, 2, '#24160f'); R(c, px - 4, fy - 19, 8, 2, '#24160f'); R(c, px - 2, fy - 20, 4, 1, '#24160f');
+      R(c, px - 7, fy - 14, 14, 1, '#b8904a'); R(c, px - 5, fy - 15, 10, 1, '#d8b46a'); R(c, px - 7, fy - 15, 2, 1, '#c9a35c'); R(c, px + 5, fy - 15, 2, 1, '#c9a35c');
+      R(c, px - 4, fy - 16, 8, 1, '#e4c47e'); R(c, px - 3, fy - 17, 6, 1, '#e4c47e'); R(c, px - 2, fy - 18, 4, 1, '#efd596'); R(c, px - 1, fy - 19, 2, 1, '#f6e2a8');
+      R(c, px - 4, fy - 14, 1, 1, '#8a6a34'); R(c, px + 3, fy - 14, 1, 1, '#8a6a34');
     }
     if (!withBoat) return;
     // paddle
@@ -205,8 +207,8 @@
     drawLeadChar(c, L, t) { vendor(c, { x: L.x, y: L.y, flip: L.flip, walking: L.walking, id: 99, color: '#c0392b', isSub: false, mode: L.wave > 0 ? 'work' : 'idle' }, L.frame, t, true); },
     drawLead(c, t, busy, L) {
       const x = 200, y = 76;
-      if (L.atDesk) PX.person(c, x, y, { top: '#c0392b', pants: '#5a2a5a', hat: 'none', work: busy || L.wave > 0 || L.stamp > 0, t });
-      if (L.atDesk) R(c, x - 3, y - 13, 6, 2, '#2b1d14'); if (L.atDesk) { R(c, x - 4, y - 12, 1, 3, '#2b1d14'); R(c, x + 3, y - 12, 1, 3, '#2b1d14'); R(c, x + 1, y - 15, 3, 2, '#2b1d14'); }
+      if (L.atDesk) PX.person(c, x, y, { top: '#c0392b', pants: '#5a2a5a', hair: '#2b1d14', hat: 'none', work: busy || L.wave > 0 || L.stamp > 0, t });
+      if (L.atDesk) { R(c, x + 1, y - 19, 5, 4, '#24160f'); R(c, x + 2, y - 18, 3, 2, '#3a2418'); R(c, x + 2, y - 17, 3, 1, '#e74c6a'); }
       R(c, x - 12, y - 3, 24, 6, '#6e4224'); R(c, x - 12, y - 4, 24, 2, '#a8703f');
       R(c, x - 9, y - 5, 7, 2, '#f6efe0'); R(c, x + 3, y - 6, 4, 3, '#c9a35a');
     },
@@ -239,8 +241,8 @@
     drawPortrait(c, a) { vendor(c, a, 0, 0, false); },
     drawCarry(c, x, y) { const d = 0; R(c, x - 2, y - 5, 5, 3, '#4f9a3f'); R(c, x, y - 5, 1, 3, '#e4c47e'); },
     drawLeadPortrait(c, x, y) {
-      PX.person(c, x, y, { top: '#c0392b', pants: '#5a2a5a', hat: 'none' });
-      R(c, x - 3, y - 13, 6, 2, '#2b1d14'); R(c, x - 4, y - 12, 1, 3, '#2b1d14'); R(c, x + 3, y - 12, 1, 3, '#2b1d14'); R(c, x + 1, y - 15, 3, 2, '#2b1d14');
+      PX.person(c, x, y, { top: '#c0392b', pants: '#5a2a5a', hair: '#2b1d14', hat: 'none' });
+      R(c, x + 1, y - 19, 5, 4, '#24160f'); R(c, x + 2, y - 18, 3, 2, '#3a2418'); R(c, x + 2, y - 17, 3, 1, '#e74c6a');
     },
   });
 })();
