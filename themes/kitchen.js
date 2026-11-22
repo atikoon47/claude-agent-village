@@ -51,16 +51,20 @@
     drawStatic(c) {
       const rnd = PX.rng(77);
       // checker floor
-      for (let y = 30; y < 218; y += 8) for (let x = 0; x < 400; x += 8) R(c, x, y, 8, 8, ((x + y) / 8) % 2 ? '#d9c7a6' : '#b89a72');
-      PX.speckle(c, 0, 30, 400, 188, ['#00000010', '#ffffff18'], .04, rnd);
+      for (let y = 30; y < 218; y += 8) for (let x = 0; x < 400; x += 8) {
+        const base = ((x + y) / 8) % 2 ? '#c98a5c' : '#b5744a';
+        R(c, x, y, 8, 8, base); R(c, x, y, 8, 1, PX.shade(base, .12)); R(c, x, y + 7, 8, 1, '#a0643f'); R(c, x + 7, y, 1, 8, '#a0643f');
+      }
+      PX.speckle(c, 0, 30, 400, 188, ['#00000014', '#ffffff14'], .04, rnd);
       // back wall: subway tiles
-      R(c, 0, 0, 400, 32, '#eef0ea');
-      for (let y = 0; y < 32; y += 4) { R(c, 0, y, 400, 1, '#cfd3cc'); for (let x = (y / 4) % 2 * 4; x < 400; x += 8) R(c, x, y, 1, 4, '#cfd3cc'); }
+      R(c, 0, 0, 400, 32, '#f3e6cc');
+      for (let y = 0; y < 32; y += 4) { R(c, 0, y, 400, 1, '#d8c6a4'); for (let x = (y / 4) % 2 * 4; x < 400; x += 8) R(c, x, y, 1, 4, '#d8c6a4'); }
       R(c, 0, 30, 400, 3, '#5f6a73');
       // hanging pans
-      for (const x of [140, 150, 252, 262]) { R(c, x, 4, 1, 6, '#555'); PX.ellipse(c, x, 13, 4, 3, '#3a3a40'); R(c, x - 2, 12, 3, 1, '#666'); }
+      for (const x of [134, 146, 258, 270]) { R(c, x, 3, 1, 6, '#6b4a2a'); PX.ellipse(c, x, 13, 5, 4, '#7a3e1e'); PX.ellipse(c, x, 13, 4, 3, '#c8743a'); R(c, x - 2, 11, 2, 1, '#f0b070'); }
+      for (const [x, col] of [[120, '#3f8f3a'], [284, '#4fa046'], [110, '#5aa84a']]) { R(c, x - 3, 22, 7, 6, '#b5562e'); R(c, x - 3, 22, 7, 1, '#d8743e'); R(c, x - 2, 17, 2, 5, col); R(c, x + 1, 18, 2, 4, col); R(c, x - 1, 16, 2, 2, PX.shade(col, .3)); }
       // side + bottom walls
-      R(c, 0, 30, 6, 188, '#4a3426'); R(c, 394, 30, 6, 188, '#4a3426');
+      R(c, 0, 30, 6, 188, '#4a2e20'); R(c, 394, 30, 6, 188, '#4a2e20');
       R(c, 0, 216, 400, 24, '#3d2b20'); for (let x = 0; x < 400; x += 10) R(c, x, 216, 1, 24, '#33241a'); R(c, 0, 216, 400, 2, '#5c4232');
       // prep counter
       counter(c, 22, 36, 104, 18);
@@ -99,6 +103,15 @@
       R(c, 322, 200, 72, 6, '#c3ccd3'); R(c, 322, 205, 72, 1, '#7e8a94');
       // mats
       for (const [x, y, w] of [[50, 58, 50], [176, 60, 48], [300, 58, 52]]) { R(c, x, y, w, 10, '#3a3f45'); for (let i = x + 2; i < x + w; i += 4) R(c, i, y + 1, 2, 8, '#454b52'); }
+      // dinner service: warm dim room, light pools from pendants, heat lamps, stove and the service hatch
+      c.save(); c.globalCompositeOperation = 'multiply'; c.fillStyle = '#d9b892'; c.fillRect(0, 0, 400, 240);
+      const v = c.createRadialGradient(200, 120, 80, 200, 120, 250); v.addColorStop(0, '#ffffff'); v.addColorStop(1, '#5a3a40');
+      c.fillStyle = v; c.fillRect(0, 0, 400, 240); c.restore();
+      this.pendants = [[176, 98], [224, 98], [104, 150], [300, 132]];
+      for (const [x, y] of this.pendants) PX.glow(c, x, y + 14, 30, '255,190,120', .3, .55);
+      PX.glow(c, 200, 52, 46, '255,120,60', .22, .4);
+      PX.glow(c, 326, 50, 50, '255,130,50', .24, .45);
+      PX.glow(c, 358, 204, 40, '255,210,140', .25, .4);
     },
 
     drawAmbient(c, t) {
@@ -111,7 +124,7 @@
         }
       });
       // heat lamps glow
-      for (const x of [172, 200, 228]) { c.fillStyle = `rgba(255,170,60,${.16 + .04 * Math.sin(t * 5 + x)})`; c.fillRect(x - 6, 38, 13, 10); }
+      for (const x of [172, 200, 228]) { R(c, x - 3, 36, 7, 1, '#ff5a3a'); R(c, x - 1, 36, 3, 1, '#ffd0a0'); }
       // steam
       steam.forEach((s, i) => {
         const k = (t * .3 + s.k) % 1, src = i % 2 ? [288, 37] : [336, 39];
@@ -119,7 +132,15 @@
         c.fillRect(Math.round(src[0] + Math.sin(k * 7 + s.s * 6) * 4), Math.round(src[1] - k * 26), 2, 2);
       });
     },
-    drawWeather() {},
+    drawWeather(c, t) {
+      // flicker on the stove, heat-lamp shimmer, pendant lamps hanging over everyone
+      this.burners.forEach(([x, y], i) => { if (i) PX.glow(c, x, y - 2, 12 + Math.sin(t * 13 + i * 2) * 2, '255,120,40', .22, .7); });
+      for (const x of [172, 200, 228]) PX.glow(c, x, 42, 9 + Math.sin(t * 5 + x), '255,90,50', .2, .7);
+      for (const [x, y] of this.pendants) {
+        PX.glow(c, x, y, 7, '255,220,150', .35, 1);
+        PX.ellipse(c, x, y, 5, 3, '#24160f'); PX.ellipse(c, x, y, 4, 2, '#2f5b4a'); PX.ellipse(c, x, y - 1, 2, 1, '#4f8a72'); PX.rect(c, x - 1, y + 1, 3, 1, '#ffe9a8');
+      }
+    },
 
     leadSeat: { x: 200, y: 50 },
     drawLeadChar(c, L, t) { PX.person(c, L.x, L.y, { top: '#2b2b30', pants: '#2b2b30', hat: 'chefLead', collar: '#fff', frame: L.frame, flip: L.flip, work: L.wave > 0, t }); },
@@ -147,7 +168,7 @@
     drawChar(c, a, frame, t) {
       PX.person(c, a.x, a.y, { top: '#f6f4ee', apron: a.color, pants: '#30343a', hat: a.isSub ? 'none' : 'toque', collar: a.isSub ? a.color : null,
         frame, work: a.mode === 'work', t, flip: a.flip });
-      if (a.isSub) { R(c, a.x - 3, a.y - 11, 6, 2, a.color); }
+      if (a.isSub) { R(c, a.x - 4, a.y - 14, 8, 1, a.color); }
     },
     drawCarry(c, x, y) { PX.ellipse(c, x + 6, y - 7, 6, 2, '#24160f'); PX.ellipse(c, x + 6, y - 7, 5, 1, '#fff'); PX.ellipse(c, x + 6, y - 9, 3, 1, '#e8553f'); PX.rect(c, x + 5, y - 10, 2, 1, '#7bc96f'); },
     drawLeadPortrait(c, x, y) { PX.person(c, x, y, { top: '#2b2b30', pants: '#2b2b30', hat: 'chefLead', collar: '#fff' }); },

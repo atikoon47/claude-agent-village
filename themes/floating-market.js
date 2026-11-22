@@ -126,9 +126,12 @@
       // water
       for (let y = WATER_TOP; y < WATER_BOT; y++) {
         const k = Math.min(y - WATER_TOP, WATER_BOT - y) / 60;
-        R(c, 0, y, 400, 1, k < .1 ? '#2f7a72' : k < .3 ? '#348a80' : '#3b968a');
+        R(c, 0, y, 400, 1, k < .06 ? '#1f5f63' : k < .14 ? '#287068' : k < .3 ? '#2f8378' : k < .5 ? '#379183' : '#3d9a88');
       }
       PX.speckle(c, 0, WATER_TOP, 400, WATER_BOT - WATER_TOP, ['#44a094', '#2f8076'], .015, rnd);
+      // wobbly reflections of the buildings on the canal
+      for (const [x, w, col] of [[22, 76, '#8a5a3a'], [304, 76, '#7a4a5a'], [170, 60, '#9a6a3e'], [164, 72, '#a8463a']])
+        for (let y = WATER_TOP + 2; y < WATER_TOP + 22; y += 2) R(c, x + ((y / 2) % 3) - 1, y, w, 1, col + '55');
       // boardwalks + pilings
       R(c, 0, 46, 400, 12, '#b08050'); for (let x = 0; x < 400; x += 5) R(c, x, 46, 1, 12, '#93683e');
       R(c, 0, 57, 400, 2, '#6e4a28'); for (let x = 4; x < 400; x += 14) R(c, x, 58, 2, 4, '#4a301a');
@@ -163,7 +166,7 @@
       // big cargo pier
       R(c, 330, 172, 60, 13, '#a8784a'); for (let y = 173; y < 185; y += 3) R(c, 330, y, 60, 1, '#8a5e36');
       // lotus + lily pads
-      for (const [x, y] of [[20, 100], [30, 108], [380, 120], [372, 132], [110, 160], [196, 150], [14, 150]]) {
+      for (const [x, y] of [[20, 100], [30, 108], [380, 120], [372, 132], [110, 160], [196, 150], [14, 150], [120, 70], [300, 72], [360, 160]]) {
         PX.ellipse(c, x, y, 4, 2, '#4f9a3f'); R(c, x, y - 1, 2, 1, '#2f7a72');
         if (rnd() < .6) { R(c, x - 1, y - 2, 3, 2, '#ff9ad5'); R(c, x, y - 3, 1, 1, '#ffd0ea'); }
       }
@@ -174,6 +177,19 @@
       R(c, 276, 129, 14, 4, '#58a83c'); R(c, 276, 131, 14, 1, '#3d7a2a');
       // customers waving on the bank (drawn in ambient), lamps
       this.customers = [[222, 192, '#e8553f'], [232, 190, '#3a7bd5'], [252, 192, '#f4d35e']];
+      // early-morning market: peach-gold light, soft shade under the palms, warm rays from the top-left
+      c.save(); c.globalCompositeOperation = 'multiply'; c.fillStyle = '#ffe3bf'; c.fillRect(0, 0, 400, 240);
+      const v = c.createRadialGradient(150, 90, 90, 200, 120, 260); v.addColorStop(0, '#ffffff'); v.addColorStop(1, '#7a6a8a');
+      c.fillStyle = v; c.fillRect(0, 0, 400, 240);
+      for (const [x, y] of [[8, 50], [128, 48], [272, 50], [392, 48]]) PX.ellipse(c, x + 6, y, 14, 4, '#c8b0a0');
+      c.restore();
+      c.save(); c.globalCompositeOperation = 'lighter';
+      for (const [x0, w] of [[-40, 26], [40, 14], [110, 30], [210, 12], [260, 22]]) {
+        c.fillStyle = 'rgba(255,200,120,.06)';
+        c.beginPath(); c.moveTo(x0, 0); c.lineTo(x0 + w, 0); c.lineTo(x0 + w + 160, 240); c.lineTo(x0 + 160, 240); c.closePath(); c.fill();
+      }
+      c.restore();
+      PX.glow(c, 200, 60, 50, '255,200,120', .2, .5);
     },
 
     drawAmbient(c, t) {
@@ -198,9 +214,18 @@
       this.customers.forEach(([x, y, col], i) => PX.person(c, x, y, { top: col, pants: '#2b2f4a', hat: 'none', work: true, t: t + i * .3 }));
     },
     drawWeather(c, t) {
-      // soft sun glare sweeping the water
-      c.fillStyle = 'rgba(255,240,200,.05)';
-      c.fillRect(0, WATER_TOP, 400, WATER_BOT - WATER_TOP);
+      // sun sparkles drifting along the canal
+      for (let i = 0; i < 26; i++) {
+        const x = (i * 53 + t * 6) % 400, y = WATER_TOP + 8 + ((i * 37) % (WATER_BOT - WATER_TOP - 16)), on = Math.sin(t * 3 + i * 1.7);
+        if (on > .6) { R(c, x, y, 1, 1, '#fff8dc'); if (on > .9) { R(c, x - 1, y, 3, 1, '#fff2c0'); R(c, x, y - 1, 1, 3, '#fff2c0'); } }
+      }
+      // two egrets gliding across now and then
+      for (let i = 0; i < 2; i++) {
+        const k = ((t * .03 + i * .5) % 1), x = -20 + k * 440, y = 30 + i * 18 + Math.sin(t * .8 + i) * 4, f = Math.floor(t * 4 + i) % 2;
+        PX.ellipse(c, Math.round(x), Math.round(y + 40), 3, 1, 'rgba(20,60,60,.18)');
+        R(c, x - 2, y, 5, 2, '#ffffff'); R(c, x + 3, y - 1, 2, 1, '#ffffff'); R(c, x + 5, y - 1, 2, 1, '#f2b02a');
+        R(c, x - 4, y + (f ? -2 : 1), 4, 1, '#f0f0f0'); R(c, x, y + (f ? -2 : 1), 3, 1, '#e6e6e6');
+      }
     },
 
     leadSeat: { x: 200, y: 76 },
