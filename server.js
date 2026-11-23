@@ -4,7 +4,7 @@
 //  - GET  /stream : pushes those events to the page (Server-Sent Events)
 // It never calls Claude or any outside service.
 const http = require('http'), fs = require('fs'), path = require('path');
-const ROOT = __dirname, PORT = +process.env.PORT || 5179;
+const ROOT = __dirname, PORT = require('./port').getPort();
 // Safety: only answer requests addressed to this machine by name (blocks DNS-rebinding pages from reading /stream).
 const ALLOWED_HOSTS = new Set([`localhost:${PORT}`, `127.0.0.1:${PORT}`, `[::1]:${PORT}`]);
 // Only transcripts inside Claude Code's own projects folder may be read (and only their token counts).

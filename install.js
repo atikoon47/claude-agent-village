@@ -1,5 +1,6 @@
 // Agent Village installer.
 //   node install.js           copy hooks/ to ~/.claude/agent-village and register them in ~/.claude/settings.json
+//   node install.js --port 6001  same, and use port 6001 instead of 5179 (saved in ~/.claude/agent-village/config.json)
 //   node install.js --remove  take them out again
 // settings.json is backed up before every change. Only Agent Village's own entries are touched.
 const fs = require('fs'), path = require('path'), os = require('os');
@@ -11,7 +12,13 @@ const targetFwd = target.split(path.sep).join('/');
 const FILES = ['hook.js', 'statusline.js'];
 const EVENTS = ['SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'PostToolUseFailure',
   'Notification', 'SubagentStart', 'SubagentStop', 'Stop', 'PreCompact'];
+const { getPort, valid } = require('./port');
 const isOurs = g => JSON.stringify(g).includes('agent-village/hook.js');
+
+// --port N: check it before touching anything.
+const pi = process.argv.indexOf('--port');
+const newPort = pi > -1 ? +process.argv[pi + 1] : null;
+if (pi > -1 && !valid(newPort)) { console.error('--port needs a number from 1024 to 65535, e.g. --port 6001. Nothing was changed.'); process.exit(1); }
 
 let s = {};
 if (fs.existsSync(settingsPath)) {
@@ -28,7 +35,7 @@ if (process.argv.includes('--remove')) {
   if (s.hooks && !Object.keys(s.hooks).length) delete s.hooks;
   if (s.statusLine && String(s.statusLine.command).includes('agent-village')) delete s.statusLine;
   save();
-  for (const f of FILES) fs.rmSync(path.join(target, f), { force: true });
+  for (const f of [...FILES, 'config.json']) fs.rmSync(path.join(target, f), { force: true });
   try { fs.rmdirSync(target); } catch { }
   console.log('Removed Agent Village hooks. Claude Code is back to how it was.');
   process.exit(0);
@@ -36,6 +43,7 @@ if (process.argv.includes('--remove')) {
 
 fs.mkdirSync(target, { recursive: true });
 for (const f of FILES) fs.copyFileSync(path.join(__dirname, 'hooks', f), path.join(target, f));
+if (newPort) fs.writeFileSync(path.join(target, 'config.json'), JSON.stringify({ port: newPort }, null, 2) + '\n');
 
 s.hooks = s.hooks || {};
 for (const ev of EVENTS) {
@@ -45,4 +53,6 @@ for (const ev of EVENTS) {
 if (!s.statusLine) s.statusLine = { type: 'command', command: `node "${targetFwd}/statusline.js"` };
 else if (!String(s.statusLine.command).includes('agent-village')) console.log('You already have a status line - left it unchanged.');
 save();
-console.log('Installed. Start the page with start.bat (or: npm start) and open http://localhost:5179');
+const port = getPort();
+console.log(`Installed (port ${port}). Start the page with start.bat (or: npm start) and open http://localhost:${port}`);
+if (newPort) console.log('If Agent Village is already running, close it and start it again so it uses the new port.');

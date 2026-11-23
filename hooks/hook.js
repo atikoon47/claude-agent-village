@@ -3,6 +3,8 @@
 // only talks to 127.0.0.1, and never sends file contents, diffs or command output.
 // It does send the first 120 chars of your prompt and the first 150 chars of Claude's final reply (shown on the local page).
 const http = require('http'), path = require('path');
+// Port comes from config.json next to this script (written by install.js --port), else 5179.
+const PORT = (() => { try { const n = +JSON.parse(require('fs').readFileSync(require('path').join(__dirname, 'config.json'), 'utf8')).port; return n >= 1024 && n <= 65535 ? n : 5179; } catch { return 5179; } })();
 let raw = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', d => { if (raw.length < 2e6) raw += d; }).on('end', () => {
@@ -46,7 +48,7 @@ process.stdin.on('data', d => { if (raw.length < 2e6) raw += d; }).on('end', () 
     transcript: e.transcript_path || null, ts: Date.now(),
   };
   const body = JSON.stringify(out);
-  const req = http.request({ host: '127.0.0.1', port: 5179, path: '/hook', method: 'POST', timeout: 800,
+  const req = http.request({ host: '127.0.0.1', port: PORT, path: '/hook', method: 'POST', timeout: 800,
     headers: { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) } }, r => r.resume());
   req.on('error', () => { }); req.on('timeout', () => req.destroy()); req.end(body);
 });
