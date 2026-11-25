@@ -4,6 +4,8 @@
 
 *A pixel-art village that visualises what your Claude Code agents are doing. Display-only, runs entirely on your own machine.*
 
+![Claude Agent Village: Christmas village, restaurant kitchen and Thai floating market themes (demo mode)](docs/demo.gif)
+
 ## ทำอะไรได้บ้าง
 
 - **🔴 Live**: เห็น session ของ Claude Code จริง (Desktop / terminal / IDE) เป็นตัวละครในฉาก เดินไปจุดต่างๆ ตามเครื่องมือที่ใช้ (อ่านไฟล์, แก้ไฟล์, รันคำสั่ง, ค้นเว็บ ฯลฯ)
