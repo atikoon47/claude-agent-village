@@ -82,11 +82,22 @@
   const ripples = Array.from({ length: 70 }, () => ({ x: Math.random() * 400, y: WATER_TOP + 6 + Math.random() * (WATER_BOT - WATER_TOP - 10), v: 3 + Math.random() * 5, l: 2 + (Math.random() * 4 | 0), p: Math.random() * 6 }));
   const leaves = Array.from({ length: 6 }, () => ({ x: Math.random() * 400, y: WATER_TOP + 10 + Math.random() * 80, v: 2 + Math.random() * 3 }));
 
-  function hat(c, px, fy) { // งอบ conical hat
-    R(c, px - 8, fy - 15, 16, 3, '#24160f'); R(c, px - 6, fy - 17, 12, 2, '#24160f'); R(c, px - 4, fy - 19, 8, 2, '#24160f'); R(c, px - 2, fy - 20, 4, 1, '#24160f');
-    R(c, px - 7, fy - 14, 14, 1, '#b8904a'); R(c, px - 5, fy - 15, 10, 1, '#d8b46a'); R(c, px - 7, fy - 15, 2, 1, '#c9a35c'); R(c, px + 5, fy - 15, 2, 1, '#c9a35c');
-    R(c, px - 4, fy - 16, 8, 1, '#e4c47e'); R(c, px - 3, fy - 17, 6, 1, '#e4c47e'); R(c, px - 2, fy - 18, 4, 1, '#efd596'); R(c, px - 1, fy - 19, 2, 1, '#f6e2a8');
-    R(c, px - 4, fy - 14, 1, 1, '#8a6a34'); R(c, px + 3, fy - 14, 1, 1, '#8a6a34');
+  function hat(c, px, fy) { // งอบ: a low, wide woven dome that sits right on the head
+    const ink = '#2b1a0e', rows = [[-19, 2], [-18, 4], [-17, 6], [-16, 8], [-15, 9]];
+    for (const [dy, hw] of rows) {
+      const y = fy + dy, l = px - hw, r = px + hw;
+      R(c, l - 1, y, 1, 1, ink); R(c, r, y, 1, 1, ink);
+      for (let x = l; x < r; x++) {
+        const lit = x < px - 1, shade = x >= px + 2;
+        const weave = ((x - px) + (dy & 1)) & 1;   // alternating straw strips
+        R(c, x, y, 1, 1, lit ? (weave ? '#f2d898' : '#e6c682') : shade ? (weave ? '#c9a05a' : '#b88e4c') : (weave ? '#e8c987' : '#d8b46e'));
+      }
+    }
+    R(c, px - 2, fy - 20, 4, 1, ink); R(c, px - 1, fy - 19, 1, 1, '#fff0c0');
+    // brim rim, drooping at the tips, with the dark woven underside peeking out
+    R(c, px - 9, fy - 15, 18, 1, '#c99d58'); R(c, px - 7, fy - 14, 14, 1, '#6e4a28');
+    R(c, px - 10, fy - 15, 1, 2, ink); R(c, px + 9, fy - 15, 1, 2, ink); R(c, px - 9, fy - 14, 2, 1, ink); R(c, px + 7, fy - 14, 2, 1, ink);
+    R(c, px - 5, fy - 13, 10, 1, 'rgba(50,25,8,.38)'); // shade cast on the brow
   }
   function vendor(c, a, frame, t, withBoat) {
     const bob = withBoat ? Math.round(Math.sin(t * 2.2 + a.id) * .6) : 0;
@@ -96,7 +107,7 @@
       if (a.walking) for (let i = 0; i < 3; i++) R(c, x - dir * (L / 2 + 3 + i * 4), y + 1 + (i % 2), 3, 1, `rgba(220,255,245,${.55 - i * .15})`);
       PX.ellipse(c, x, y + 2, L / 2 + 1, 2, 'rgba(10,50,50,.35)');
     }
-    PX.person(c, px, fy, { top: a.color, pants: '#2b2f4a', hat: 'none', frame: withBoat ? 0 : frame, work: a.mode === 'work', t, flip: a.flip });
+    PX.person(c, px, fy, { top: a.color, pants: '#2b2f4a', hat: 'none', face: 'cool', skin: '#e2a878', hair: '#1e140e', frame: withBoat ? 0 : frame, work: a.mode === 'work', t, flip: a.flip });
     if (a.isSub) { R(c, px - 4, fy - 13, 8, 1, a.color); R(c, px + 3, fy - 13, 2, 2, a.color); }
     else hat(c, px, fy);
     if (!withBoat) return;
@@ -310,7 +321,7 @@
     drawLeadChar(c, L, t) { vendor(c, { x: L.x, y: L.y, flip: L.flip, walking: L.walking, id: 99, color: '#c0392b', isSub: false, mode: L.wave > 0 ? 'work' : 'idle' }, L.frame, t, true); },
     drawLead(c, t, busy, L) {
       const x = 200, y = 64;
-      if (L.atDesk) PX.person(c, x, y, { top: '#c0392b', pants: '#5a2a5a', hair: '#2b1d14', hat: 'none', work: busy || L.wave > 0 || L.stamp > 0, t });
+      if (L.atDesk) PX.person(c, x, y, { top: '#c0392b', pants: '#5a2a5a', hair: '#1e140e', skin: '#e2a878', face: 'cool', hat: 'none', work: busy || L.wave > 0 || L.stamp > 0, t });
       if (L.atDesk) { R(c, x + 1, y - 19, 5, 4, '#24160f'); R(c, x + 2, y - 18, 3, 2, '#3a2418'); R(c, x + 2, y - 17, 3, 1, '#e74c6a'); }
       R(c, x - 14, y - 3, 28, 7, '#6e4224'); R(c, x - 14, y - 4, 28, 2, '#a8703f');
       R(c, x - 11, y - 7, 9, 4, '#3a3a44'); R(c, x - 10, y - 6, 7, 2, '#7fb6d9'); R(c, x + 3, y - 6, 5, 2, '#f6efe0'); R(c, x + 9, y - 6, 3, 2, '#c9a35a');
@@ -347,7 +358,7 @@
     drawPortrait(c, a) { vendor(c, a, 0, 0, false); },
     drawCarry(c, x, y) { R(c, x - 2, y - 5, 5, 3, '#4f9a3f'); R(c, x, y - 5, 1, 3, '#e4c47e'); },
     drawLeadPortrait(c, x, y) {
-      PX.person(c, x, y, { top: '#c0392b', pants: '#5a2a5a', hair: '#2b1d14', hat: 'none' });
+      PX.person(c, x, y, { top: '#c0392b', pants: '#5a2a5a', hair: '#1e140e', skin: '#e2a878', face: 'cool', hat: 'none' });
       R(c, x + 1, y - 19, 5, 4, '#24160f'); R(c, x + 2, y - 18, 3, 2, '#3a2418'); R(c, x + 2, y - 17, 3, 1, '#e74c6a');
     },
   });

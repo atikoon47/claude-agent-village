@@ -69,7 +69,7 @@ const PX = {
 
   /* Chibi person, 10 wide x 16 tall (+hat), feet at (x,y). Big outlined head, eyes, blush, shading.
      o: {top, pants, shoes, hair, skin, hat:'elf'|'santa'|'toque'|'chefLead'|'none', hatCol, apron, belt, beard,
-         ears, collar, frame(0-2), work, t, flip, blink} */
+         ears, collar, frame(0-2), work, t, flip, blink, face:'cool' for narrow eyes + brows instead of big shiny eyes} */
   HEAD_TOP: 15, // rows from feet to top of the head (before any hat)
   person(c, x, y, o) {
     x = Math.round(x); y = Math.round(y);
@@ -106,10 +106,20 @@ const PX = {
     if (o.ears) { R(-1, 4 + h, 2, 2, ink); R(-1, 3 + h, 1, 1, ink); R(0, 4 + h, 1, 2, skin); R(9, 4 + h, 2, 2, ink); R(10, 3 + h, 1, 1, ink); R(9, 4 + h, 1, 2, skinD); }
     // face
     const blink = (Math.floor(t * 10 + x) % 37) === 0;
-    if (blink) { R(2, 6 + h, 2, 1, ink); R(6, 6 + h, 2, 1, ink); }
-    else { R(2, 5 + h, 2, 2, ink); R(6, 5 + h, 2, 2, ink); R(2, 5 + h, 1, 1, '#fff'); R(6, 5 + h, 1, 1, '#fff'); }
-    R(1, 7 + h, 1, 1, '#f59a8b'); R(8, 7 + h, 1, 1, '#f59a8b');
-    R(4, 7 + h, 2, 1, o.work ? '#a8423a' : PX.shade(skin, -.3));
+    if (o.face === 'cool') {
+      // narrow, level eyes under heavy brows, cheekbone shade, a one-sided smirk: no blush, no shine
+      const brow = PX.shade(hair, -.45);
+      R(1, 4 + h, 3, 1, brow); R(6, 4 + h, 3, 1, brow); R(3, 4 + h, 1, 1, ink); R(6, 4 + h, 1, 1, ink);
+      if (blink) { R(2, 5 + h, 2, 1, skinD); R(6, 5 + h, 2, 1, skinD); }
+      else { R(2, 5 + h, 2, 1, ink); R(6, 5 + h, 2, 1, ink); R(3, 5 + h, 1, 1, '#4a3424'); R(6, 5 + h, 1, 1, '#4a3424'); }
+      R(2, 6 + h, 2, 1, skinD); R(6, 6 + h, 2, 1, skinD); R(1, 7 + h, 1, 1, skinD);
+      R(4, 7 + h, 2, 1, PX.shade(skin, -.42)); R(6, 6 + h, 1, 1, PX.shade(skin, -.32));
+    } else {
+      if (blink) { R(2, 6 + h, 2, 1, ink); R(6, 6 + h, 2, 1, ink); }
+      else { R(2, 5 + h, 2, 2, ink); R(6, 5 + h, 2, 2, ink); R(2, 5 + h, 1, 1, '#fff'); R(6, 5 + h, 1, 1, '#fff'); }
+      R(1, 7 + h, 1, 1, '#f59a8b'); R(8, 7 + h, 1, 1, '#f59a8b');
+      R(4, 7 + h, 2, 1, o.work ? '#a8423a' : PX.shade(skin, -.3));
+    }
     if (o.beard) {
       R(1, 6 + h, 8, 5, ink); R(2, 6 + h, 6, 5, '#f4f4f8'); R(2, 10 + h, 6, 1, '#d5d8e6'); R(3, 11 + h, 4, 1, ink);
       R(1, 7 + h, 1, 1, '#f59a8b'); R(3, 6 + h, 4, 1, '#ffffff'); R(4, 7 + h, 2, 1, '#e07a6a');
