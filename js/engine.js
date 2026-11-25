@@ -127,6 +127,7 @@
 
   /* ---------------- live mode: real Claude Code events ---------------- */
   let mode = 'demo', connected = false, rate = null, gotSnapshot = false, account = null, lastEventAt = null, revealUntil = 0;
+  let srvBoot = null, srv = {}, sessionTtl = 30 * 60 * 1000; // server facts from the Snapshot: status line owner, ports
   const bySid = new Map(), byAid = new Map();
   const ROLE = t => {
     if (/^(Read|Grep|Glob|LS|NotebookRead)$/.test(t)) return 'read';
@@ -137,42 +138,116 @@
   };
   function liveAgent(sid, project, ctxTokens, quiet) {
     let a = bySid.get(sid);
+    if (a) {
+      a.seen = Date.now();
+      // it was sent home for being silent, but it's talking again: cancel the walk home if it hasn't started
+      if (a.leaving) { const i = a.inbox.findIndex(x => x.kind === 'leave'); if (i >= 0) { a.inbox.splice(i, 1); a.leaving = false; } }
+    }
     if (a) return a;
-    const [n, c] = CREW[crewNext % CREW.length]; const p = theme.places.idle;
-    a = makeAgent({ name: n, color: c, crewIdx: crewNext++ % CREW.length, x: p.x + rnd(-30, 30), y: p.y + rnd(-4, 4), live: true, sid, project });
+    const { name, crewIdx } = nameFor(sid), p = theme.places.idle;
+    a = makeAgent({ name, color: CREW[crewIdx][1], crewIdx, x: p.x + rnd(-30, 30), y: p.y + rnd(-4, 4), live: true, sid, project });
     if (ctxTokens) { a.ctxTokens = ctxTokens; a.ctx = Math.min(1, ctxTokens / (ctxTokens > 200000 ? 1000000 : 200000)); }
-    bySid.set(sid, a); if (!quiet) { log(a, `เปิด session ใน ${esc(project || 'โปรเจกต์')} 👋`); bossGreet(a); }
+    a.seen = Date.now(); bySid.set(sid, a); if (!quiet) { log(a, `เปิด session ใน ${esc(project || 'โปรเจกต์')} 👋`); bossGreet(a); }
     return a;
   }
+  // A session keeps its name if it leaves and comes back (lunch break, server restart, page reload).
+  // New sessions take the first free crew name; only when all 7 are on screen do numbers appear (Bobby 2 ...).
+  const savedNames = new Map((() => { try { return JSON.parse(localStorage.getItem('av-names')) || []; } catch { return []; } })());
+  function nameFor(sid) {
+    const used = new Set([...bySid.values()].map(a => a.name)), saved = savedNames.get(sid);
+    // names of sessions seen in the last 3 hours stay reserved, so a newcomer doesn't take a regular's name
+    const held = new Set([...savedNames].filter(([k, v]) => k !== sid && Date.now() - (v.at || 0) < 3 * 3600e3).map(([, v]) => v.name));
+    let pick = saved && !used.has(saved.name) && CREW[saved.crewIdx] ? saved : null;
+    for (let k = 1, pass = 0; !pick; pass ? k++ : pass++) for (let i = 0; i < CREW.length && !pick; i++) {
+      const name = k === 1 ? CREW[i][0] : `${CREW[i][0]} ${k}`;
+      if (!used.has(name) && (pass || !held.has(name))) pick = { name, crewIdx: i };
+    }
+    pick = { name: pick.name, crewIdx: pick.crewIdx, at: Date.now() };
+    savedNames.delete(sid); savedNames.set(sid, pick);
+    while (savedNames.size > 60) savedNames.delete(savedNames.keys().next().value);
+    saveNames();
+    return pick;
+  }
+  function saveNames() { try { localStorage.setItem('av-names', JSON.stringify([...savedNames])); } catch { } }
   function liveSub(parent, aid, atype) {
     parent.kids++;
     const s = makeAgent({ name: atype ? atype.slice(0, 12) : fmt(w().helperName, { s: parent.name }), color: parent.color, crewIdx: parent.crewIdx,
       parent, x: parent.x + 8, y: parent.y + 2, live: true, task: 'ช่วยงาน ' + parent.name });
-    byAid.set(aid, s); log(s, `มาช่วย ${parent.name} แล้ว`);
+    s.aid = aid; s.seen = Date.now(); byAid.set(aid, s); log(s, `มาช่วย ${parent.name} แล้ว`);
     return s;
   }
-  function settlePerm(a) {
+  function sendHome(a, why) {
+    if (a.leaving) return; a.leaving = true;
+    // tools still "running" will never get their PostToolUse now: finish them so the walk home isn't stuck behind them
+    for (const it of a.inbox) if (it.kind === 'tool') it.done = true;
+    a.tools.clear();
     if (a.permReq) { a.permReq.settled = true; a.permReq = null; }
+    if (a.cur && a.cur.type === 'perm' && !a.approved) { a.approved = true; const i = permQueue.indexOf(a); if (i >= 0) permQueue.splice(i, 1); }
+    a.inbox.push({ kind: 'leave', why });
+    if (a.isSub) { if (byAid.get(a.aid) === a) byAid.delete(a.aid); if (a.parent) a.parent.kids = Math.max(0, a.parent.kids - 1); }
+    // helpers whose SubagentStop never came leave with their session
+    else {
+      for (const [aid, s] of byAid) if (s.parent === a) sendHome(s);
+      const n = savedNames.get(a.sid); if (n) { n.at = a.seen || Date.now(); saveNames(); } // reserve the name from its last activity
+    }
+  }
+  const LONG_TOOL_TTL = 3 * 60 * 60 * 1000, INTERRUPT_IDLE = 3 * 60 * 1000;
+  // A turn is over (Stop or a new prompt): tools without a PostToolUse were denied or interrupted, so finish them.
+  function endTurn(a) {
+    for (const it of a.inbox) if (it.kind === 'tool') it.done = true;
+    for (const it of a.tools.values()) it.done = true;
+    a.tools.clear();
+  }
+  // SessionEnd never arrives if Claude is closed hard (app quit, terminal killed, sleep): expire silent sessions
+  function sweepStale() {
+    if (mode !== 'live') return;
+    const why = `เงียบไป ${Math.round(sessionTtl / 60000)} นาที`;
+    for (const a of [...bySid.values(), ...byAid.values()]) {
+      if (a.leaving || !a.seen) continue;
+      const quiet = Date.now() - a.seen;
+      // a tool still running (long build, test suite) is allowed to be silent much longer
+      if (quiet > (a.tools.size ? LONG_TOOL_TTL : sessionTtl)) { sendHome(a, a.tools.size ? `เงียบไป ${Math.round(LONG_TOOL_TTL / 3600000)} ชม.` : why); continue; }
+      // Esc-interrupted turns never send Stop: after a quiet spell with nothing running, stop "thinking" and rest
+      if (!a.isSub && a.busy && quiet > INTERRUPT_IDLE && !a.tools.size && !a.permReq && !a.inbox.length) a.busy = false;
+    }
+  }
+  // Only a successful PostToolUse for the very tool that asked proves it was approved. Anything else that ends
+  // the wait (a failure, another tool, Stop, a new prompt) means it was denied or cancelled.
+  function settlePerm(a, e) {
+    const pr = a.permReq;
+    if (pr && pr.tuid && e.ev === 'PostToolUse' && e.tuid && e.tuid !== pr.tuid) return; // a parallel tool finished: still waiting
+    const ok = e.ev === 'PostToolUse' && (!pr || !pr.tuid || e.tuid === pr.tuid);
+    if (pr) { pr.settled = true; a.permReq = null; if (!ok && pr.item) pr.item.done = true; }
     if (a.cur && a.cur.type === 'perm' && !a.approved) {
       a.approved = true; const i = permQueue.indexOf(a); if (i >= 0) permQueue.splice(i, 1);
-      const p = theme.places.permission; puff(p.x, p.y - 20, '✅'); log(a, 'ได้รับอนุมัติในแอปแล้ว ✅', 'good');
+      const p = theme.places.permission;
+      if (ok) { puff(p.x, p.y - 20, '✅'); log(a, 'ได้รับอนุมัติในแอปแล้ว ✅', 'good'); }
+      else { puff(p.x, p.y - 20, '🚫'); log(a, 'ไม่ได้อนุมัติ หรือยกเลิกไป', 'warn'); }
     }
   }
   function onLive(e) {
     if (e.ev !== 'Snapshot' && e.ev !== 'StatusLine') lastEventAt = Date.now();
     if (e.ev === 'Snapshot') {
       rate = e.rate; account = e.account; if (e.lastHookAt) lastEventAt = e.lastHookAt;
+      srv = { statusLine: e.statusLine, statusSeenAt: e.statusSeenAt, port: e.port, hookPort: e.hookPort }; if (e.sessionTtl) sessionTtl = e.sessionTtl;
       if (!gotSnapshot) { gotSnapshot = true; setMode('live'); }
       if (mode === 'live') {
-        e.sessions.forEach(s => liveAgent(s.sid, s.project, s.ctxTokens, true));
-        $('#log').innerHTML = ''; turnLines.clear();
-        (e.history || []).forEach(h => activity(h, true));
+        e.sessions.forEach(s => { const a = liveAgent(s.sid, s.project, s.ctxTokens, true); if (s.last) a.seen = s.last; });
+        // A restarted server remembers nothing, which says nothing about the sessions: keep everyone (silence expires them)
+        // and keep the log. A reconnect to the same server is exact, so anyone it doesn't know has gone.
+        const restarted = srvBoot && e.bootId && e.bootId !== srvBoot; srvBoot = e.bootId || srvBoot;
+        if (!restarted) {
+          const known = new Set(e.sessions.map(s => s.sid));
+          for (const [sid, a] of bySid) if (!known.has(sid)) sendHome(a, 'ไม่อยู่ใน server แล้ว');
+          $('#log').innerHTML = ''; turnLines.clear();
+          (e.history || []).forEach(h => activity(h, true));
+        } else log(null, 'server ในเครื่องเริ่มใหม่ ประวัติก่อนหน้ายังอยู่ในหน้านี้');
       }
       return;
     }
     if (e.ev === 'StatusLine') { if (e.rate) rate = e.rate; const a = bySid.get(e.sid); if (a && e.ctxPct != null) { a.ctx = e.ctxPct / 100; a.ctxExact = true; } return; }
     if (mode !== 'live' || !e.sid) return;
-    if (e.ev === 'SessionEnd') { activity(e); const a = bySid.get(e.sid); if (a) a.inbox.push({ kind: 'leave' }); return; }
+    if (e.ev === 'SessionEnd') { activity(e); const a = bySid.get(e.sid); if (a) sendHome(a); return; }
     let a = liveAgent(e.sid, e.project);
     activity(e);
     if (e.ctxTokens) { a.ctxTokens = e.ctxTokens; if (!a.ctxExact) a.ctx = Math.min(1, e.ctxTokens / (e.ctxTokens > 200000 ? 1000000 : 200000)); }
@@ -180,10 +255,11 @@
       let s = byAid.get(e.aid);
       if (e.ev === 'SubagentStop') { if (s) { s.inbox.push({ kind: 'end' }); byAid.delete(e.aid); } return; }
       if (!s) s = liveSub(a, e.aid, e.atype);
-      a = s;
+      s.seen = Date.now(); a = s;
     }
     if (e.ev === 'SubagentStart') return;
-    if (['PreToolUse', 'PostToolUse', 'PostToolUseFailure', 'UserPromptSubmit', 'Stop'].includes(e.ev)) settlePerm(a);
+    if (['PreToolUse', 'PostToolUse', 'PostToolUseFailure', 'UserPromptSubmit', 'Stop'].includes(e.ev)) settlePerm(a, e);
+    if (!e.aid && (e.ev === 'Stop' || e.ev === 'UserPromptSubmit')) endTurn(a);
     switch (e.ev) {
       case 'UserPromptSubmit': a.inbox.push({ kind: 'prompt', text: e.prompt }); break;
       case 'PreToolUse': {
@@ -200,7 +276,7 @@
         break;
       }
       case 'Notification':
-        if (e.ntype === 'permission_prompt' || (!e.ntype && /permission/i.test(e.msg || ''))) a.permReq = { text: e.msg || 'ขออนุญาต', settled: false };
+        if (e.ntype === 'permission_prompt' || (!e.ntype && /permission/i.test(e.msg || ''))) { const last = [...a.tools].pop(); a.permReq = { text: e.msg || 'ขออนุญาต', settled: false, tuid: last && last[0], item: last && last[1] }; }
         break;
       case 'PreCompact': a.inbox.push({ kind: 'compact' }); break;
       case 'Stop': a.inbox.push({ kind: 'stop' }); break;
@@ -272,7 +348,7 @@
           yield { type: 'work', dur: .8, icon: '📋', text: 'ส่งผลให้ ' + a.parent.name, st: 'ส่งผลลัพธ์' };
           puff(a.x, a.y - 10, '✨'); a.parent.kids = Math.max(0, a.parent.kids - 1);
           return;
-        case 'leave': yield go('idle'); log(a, 'ปิด session แล้ว'); return;
+        case 'leave': yield go('idle'); if (it.why) log(a, `กลับบ้าน (${it.why})`); else if (a.isSub) log(a, 'ปิด session แล้ว'); return; // a session's own SessionEnd is logged on arrival
       }
     }
   }
@@ -419,9 +495,9 @@
       case 'inspect': return a.inspected;
       case 'live': {
         const b = a.bub.querySelector('.bar b');
-        b.style.width = c.item.done ? '100%' : ((a.t * 70) % 100) + '%';
+        b.style.width = c.item.done || a.leaving ? '100%' : ((a.t * 70) % 100) + '%';
         if (a.permReq) return true;
-        return c.item.done && a.t >= (a.inbox.length > 2 ? .25 : .7);
+        return (c.item.done || a.leaving) && a.t >= (a.inbox.length > 2 ? .25 : .7); // leaving: its PostToolUse will never come
       }
       case 'work': a.bub.querySelector('.bar b').style.width = Math.min(100, a.t / c.dur * 100) + '%'; return a.t >= c.dur;
       case 'error': return a.t >= 1.8;
@@ -501,6 +577,18 @@
     const c = document.createElement('canvas'); c.width = 16; c.height = 25; c.className = 'pt';
     const g = c.getContext('2d'); drawFn(g); return c;
   }
+  // The 400x240 scene gets unreadable past ~10 characters, so only the most important ones are drawn:
+  // anyone waiting for approval first, then sessions before helpers, oldest first. The rest keep working off-screen.
+  const MAX_IN_SCENE = 10;
+  function pickVisible() {
+    const rank = a => (a.mode === 'perm' && !a.approved ? 0 : 2) + (a.isSub ? 1 : 0);
+    const order = [...agents].sort((p, q) => rank(p) - rank(q) || p.id - q.id);
+    let hidden = 0;
+    order.forEach((a, i) => { const h = i >= MAX_IN_SCENE; a.hidden = h; hidden += h; a.bub.style.display = a.tag.style.display = h ? 'none' : ''; a.card?.classList.toggle('offstage', h); });
+    offstage.style.display = hidden ? '' : 'none';
+    offstage.textContent = `+${hidden} ตัวทำงานนอกฉาก`;
+  }
+  const offstage = document.createElement('div'); offstage.id = 'offstage'; offstage.style.display = 'none'; overlay.appendChild(offstage);
   function renderCards() {
     if (!theme) return;
     const bar = $('#agents'); bar.innerHTML = '';
@@ -513,7 +601,7 @@
       c.appendChild(portrait(g => (theme.drawPortrait || theme.drawChar).call(theme, g, { ...a, x: 8, y: 23, flip: false, mode: 'idle', walking: false, carry: false }, 0, 0)));
       c.insertAdjacentHTML('beforeend', `<div class="cb"><div class="nm">${a.name}</div><div class="rl">${a.project ? '📁 ' + a.project : theme.crew[a.crewIdx]}</div><div class="st"><i></i><span></span></div><div class="ctx" title="context"><b></b></div><div class="subs"></div></div>`);
       c.onclick = () => approve(a, true);
-      a.card = c; bar.appendChild(c);
+      a.card = c; c.classList.toggle('offstage', !!a.hidden); bar.appendChild(c);
     }
     $('#leadCard')?.remove(); lead.id = 'leadCard';
   }
@@ -571,11 +659,19 @@
       const f = rate.five_hour, s7 = rate.seven_day;
       $('#sLimit').textContent = [f ? `5 ชม. ${Math.round(f.used_percentage)}%` : '', s7 ? `7 วัน ${Math.round(s7.used_percentage)}%` : ''].filter(Boolean).join(' · ');
       lp.title = f ? 'ลิมิต 5 ชม. รีเซ็ตเวลา ' + new Date(f.resets_at * 1000).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '';
+    } else if (mode === 'live' && gotSnapshot) {
+      // say why there's no number instead of hiding it
+      lp.style.display = ''; $('#sLimit').textContent = '—';
+      lp.title = srv.statusLine === 'other' ? 'คุณมี status line ของตัวเองอยู่ Agent Village เลยไม่ได้รับตัวเลขลิมิต (ลิมิตส่งมาทาง status line เท่านั้น)'
+        : srv.statusLine === 'none' ? 'ยังไม่ได้ติดตั้ง status line: รัน node install.js เพื่อให้เห็นลิมิต'
+        : srv.statusSeenAt ? 'status line ทำงานอยู่ แต่บัญชีนี้ไม่ได้ส่งข้อมูลลิมิตมา (เช่น ใช้ API key)'
+        : 'ตัวเลขลิมิตมาจาก status line ซึ่งทำงานเฉพาะ Claude Code ใน terminal (CLI) แอปเดสก์ท็อปไม่ได้ส่งมา';
     } else lp.style.display = 'none';
     $('#liveDot').className = 'ld ' + (mode === 'live' ? (connected ? 'on' : 'off') : 'demo');
     let lt;
     if (mode === 'demo') lt = 'ข้อมูลจำลอง: สุ่มในหน้าเว็บ ไม่เรียก Claude';
     else if (!connected) lt = 'ยังต่อ server ในเครื่องไม่ได้';
+    else if (srv.hookPort && srv.port && srv.hookPort !== srv.port) lt = `⚠️ hooks ส่งไป port ${srv.hookPort} แต่ server อยู่ port ${srv.port}: รัน node install.js --port ${srv.port}`;
     else if (!lastEventAt) lt = 'ต่อ server แล้ว แต่ยังไม่มีเหตุการณ์จาก Claude Code';
     else { const s = Math.round((Date.now() - lastEventAt) / 1000); lt = 'ได้รับเหตุการณ์จริงล่าสุด ' + (s < 60 ? s + ' วิ' : Math.round(s / 60) + ' นาที') + 'ที่แล้ว'; }
     $('#liveText').textContent = lt;
@@ -668,7 +764,7 @@
     theme.drawCarrier(ctx, car, t);
     boss.frame = boss.walking ? (Math.floor(t * 8) % 2 ? 1 : 2) : 0;
     theme.drawLead(ctx, t, permQueue.length > 0, boss);
-    const drawList = [...agents]; if (!boss.atDesk) drawList.push({ isBoss: true, y: boss.y });
+    const drawList = agents.filter(a => !a.hidden); if (!boss.atDesk) drawList.push({ isBoss: true, y: boss.y });
     for (const a of drawList.sort((p, q) => p.y - q.y)) {
       if (a.isBoss) { theme.drawLeadChar(ctx, boss, t); continue; }
       const frameN = a.walking ? (Math.floor(t * 8) % 2 ? 1 : 2) : 0;
@@ -690,7 +786,7 @@
     { const seat = theme.leadSeat || bossFront(), bx = boss.atDesk ? seat.x : boss.x, by = boss.atDesk ? seat.y : boss.y;
       bossBub.style.display = performance.now() < bossSayUntil ? 'block' : 'none';
       bossBub.style.transform = `translate(${bx * scale}px,${(by - 23) * scale}px) translate(-50%,-100%)`; }
-    panelT += rdt; if (panelT > .25) { panelT = 0; updatePanels(); }
+    panelT += rdt; if (panelT > .25) { panelT = 0; updatePanels(); sweepStale(); pickVisible(); }
     if (!stepping) requestAnimationFrame(frame);
   }
   let stepping = false;
