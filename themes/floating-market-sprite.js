@@ -23,6 +23,7 @@
   // a copy of the sheet with the magenta key shades swapped for this agent's colour (light, base, shadow)
   function sheetFor(name, color) {
     const s = SHEETS[name]; if (!s) return null;
+    if (!color) return s.img;              // characters that keep their own colours (ป้าแดง)
     const id = name + color;
     if (tinted.has(id)) return tinted.get(id);
     const cv = document.createElement('canvas'); cv.width = s.img.width; cv.height = s.img.height;
@@ -73,6 +74,24 @@
       const f = Math.floor(t * (a.walking ? 8 : 3) + a.id);
       if (!blit(c, sheet, a.color, f, x, y + 3, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
     },
+    // ป้าแดง: at her desk in the permission centre, or paddling out to check on someone
+    drawLead(c, t, busy, L) {
+      const x = 200, y = 64;
+      if (!SHEETS.lead_desk_idle) return M.drawLead.call(this, c, t, busy, L);
+      R(c, x - 14, y - 3, 28, 7, '#6e4224'); R(c, x - 14, y - 4, 28, 2, '#a8703f');   // desk
+      if (!L.atDesk) return;
+      const [sheet, f] = L.stamp > 0 ? ['lead_desk_stamp', Math.min(3, Math.floor((.7 - L.stamp) / .7 * 4))]
+        : L.wave > 0 ? ['lead_desk_wave', Math.floor(t * 5)]
+        : ['lead_desk_idle', Math.floor(t * (busy ? 3 : 1.5))];
+      blit(c, sheet, null, f, x, y - 3, false, 1, hd);
+    },
+    drawLeadChar(c, L, t) {
+      if (!SHEETS.lead_boat_paddle) return M.drawLeadChar.call(this, c, L, t);
+      const y = L.y + Math.round(Math.sin(t * 2.2) * .6);
+      PX.ellipse(c, Math.round(L.x), Math.round(y + 3), 14, 2, 'rgba(10,50,50,.35)');
+      blit(c, 'lead_boat_paddle', null, L.walking ? Math.floor(t * 8) : 0, L.x, y + 3, L.flip, 1, hd);
+    },
+    drawLeadPortrait(c, x, y) { if (!blit(c, 'lead_portrait', null, 0, 8, 25, false)) M.drawLeadPortrait.call(this, c, x, y); },
     drawPortrait(c, a) { if (!blit(c, prefix + 'foot_idle', a.color, 0, a.x, 25, false)) M.drawPortrait.call(this, c, a); },
   }
   }

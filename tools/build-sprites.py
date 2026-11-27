@@ -27,6 +27,13 @@ CHARACTERS = {
         'boat_idle': ('boat_idle.webp', None),
         'foot_idle': ('foot_idle.png', None),
     }),
+    'lead_': ('lead', {                          # ป้าแดง, the harbour boss: red blouse, never recoloured
+        'desk_idle': ('desk_idle.webp', None),
+        'desk_stamp': ('desk_stamp.webp', None),
+        'desk_wave': ('desk_wave.webp', None),
+        'boat_paddle': ('boat_paddle.png', None),
+        'portrait': ('ref.png', None),
+    }, 'red', False),
     'merchant_': ('merchant', {                  # the vendor man
         'boat_paddle': ('boat_paddle.webp', None),
         'boat_idle': ('boat_paddle.webp', [0]),  # no idle strip yet: the first paddle frame, bobbed by the game
@@ -66,12 +73,21 @@ def frames(mask):
     return [out[k] for k in keep]
 
 
-def head_height(rgb, m):
-    """Hat top to shirt collar: the same in every pose, seated or standing (the magenta shirt is easy to find)."""
+# How to find the shirt: it sets the scale (head height), lines frames up, and for agents gets recoloured.
+SHIRT = {
+    'magenta': lambda r, g, b: (r > 110) & (b > 90) & (g < 0.55 * np.minimum(r, b)) & (r - g > 70),
+    'red': lambda r, g, b: (r > 120) & (g < 90) & (b < 90) & (r - g > 60),
+}
+
+
+def head_height(rgb, m, shirt_kind):
+    """Hat/hair top to shirt collar: the same in every pose, seated or standing."""
     r, g, b = [rgb[..., k].astype(int) for k in range(3)]
-    shirt = m & (r > 150) & (b > 120) & (g < 110)
+    shirt = m & SHIRT[shirt_kind](r, g, b)
     top = np.nonzero(m.any(1))[0].min()
-    collar = np.nonzero(shirt.sum(1) > 3)[0].min()
+    rows = shirt.sum(1)
+    # first row that is properly shirt (a quarter of its widest row): small bits like a red flower don't count
+    collar = np.nonzero(rows > max(3, rows.max() * .25))[0].min()
     return collar - top
 
 
@@ -89,7 +105,7 @@ def shrink(rgb, m, k):
     return np.dstack([col, al]).clip(0, 255).astype(np.uint8)
 
 
-def build(strips, density, colors, meta):
+def build(strips, density, colors, meta, shirt_kind='magenta', recolor=True):
     """density 1 = one sheet pixel per world pixel; density 4 = 4x4 sheet pixels per world pixel (high-res layer)."""
     sheets = {}
     for name, (rgb, fr, k) in strips.items():
@@ -108,9 +124,9 @@ def build(strips, density, colors, meta):
             q = np.array(rgb).astype(int)
             r, g, b = q[..., 0], q[..., 1], q[..., 2]
             a = s[..., 3] > 110
-            shirt = a & (r > 110) & (b > 90) & (g < 0.55 * np.minimum(r, b)) & (r - g > 70)
+            shirt = a & SHIRT[shirt_kind](r, g, b)
             lum = (r + g + b) / 3
-            if shirt.any():
+            if recolor and shirt.any():
                 t1, t2 = np.percentile(lum[shirt], [66, 25])
                 q[shirt & (lum >= t1)] = KEY[0]
                 q[shirt & (lum < t1) & (lum >= t2)] = KEY[1]
@@ -136,15 +152,16 @@ def build(strips, density, colors, meta):
 
 def main():
     meta = {}
-    for prefix, (sub, sheets) in CHARACTERS.items():
+    for prefix, (sub, sheets, *opt) in CHARACTERS.items():
+        shirt_kind, recolor = (opt + ['magenta', True][len(opt):]) if opt else ('magenta', True)
         strips = {}
         for name, (f, pick) in sheets.items():
             rgb, mask = load(os.path.join(SRC, sub, f))
             fr = frames(mask)
             if pick: fr = [fr[i] for i in pick]
-            strips[prefix + name] = (rgb, fr, HEAD_H / np.median([head_height(rgb, m) for m in fr]))
-        build(strips, 1, 28, meta)
-        build(strips, HD, 64, meta)
+            strips[prefix + name] = (rgb, fr, HEAD_H / np.median([head_height(rgb, m, shirt_kind) for m in fr]))
+        build(strips, 1, 28, meta, shirt_kind, recolor)
+        build(strips, HD, 64, meta, shirt_kind, recolor)
     json.dump(meta, open(os.path.join(ROOT, 'sprites.json'), 'w'), indent=1)
 
 
