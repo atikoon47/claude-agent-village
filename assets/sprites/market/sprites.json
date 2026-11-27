@@ -15,12 +15,28 @@
   "ay": 21,
   "density": 1
  },
+ "boat_ask": {
+  "w": 31,
+  "h": 27,
+  "frames": 6,
+  "ax": 14,
+  "ay": 26,
+  "density": 1
+ },
+ "boat_work": {
+  "w": 29,
+  "h": 20,
+  "frames": 6,
+  "ax": 12,
+  "ay": 18,
+  "density": 1
+ },
  "foot_idle": {
   "w": 13,
   "h": 27,
   "frames": 3,
   "ax": 6,
-  "ay": 25,
+  "ay": 26,
   "density": 1
  },
  "boat_idle@4x": {
@@ -37,6 +53,22 @@
   "frames": 6,
   "ax": 53,
   "ay": 85,
+  "density": 4
+ },
+ "boat_ask@4x": {
+  "w": 123,
+  "h": 107,
+  "frames": 6,
+  "ax": 56,
+  "ay": 106,
+  "density": 4
+ },
+ "boat_work@4x": {
+  "w": 117,
+  "h": 76,
+  "frames": 6,
+  "ax": 49,
+  "ay": 74,
   "density": 4
  },
  "foot_idle@4x": {
@@ -137,10 +169,18 @@
  },
  "merchant_boat_idle": {
   "w": 36,
-  "h": 26,
+  "h": 25,
   "frames": 6,
   "ax": 13,
-  "ay": 24,
+  "ay": 23,
+  "density": 1
+ },
+ "merchant_boat_ask": {
+  "w": 38,
+  "h": 27,
+  "frames": 5,
+  "ax": 14,
+  "ay": 25,
   "density": 1
  },
  "merchant_foot_idle": {
@@ -165,6 +205,14 @@
   "frames": 6,
   "ax": 53,
   "ay": 96,
+  "density": 4
+ },
+ "merchant_boat_ask@4x": {
+  "w": 152,
+  "h": 106,
+  "frames": 5,
+  "ax": 58,
+  "ay": 102,
   "density": 4
  },
  "merchant_foot_idle@4x": {

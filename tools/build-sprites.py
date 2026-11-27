@@ -21,7 +21,8 @@ ROOT = os.path.join(os.path.dirname(__file__), '..', 'assets', 'sprites')
 HD = 4                          # density of the high-res sheets (sheet px per world px)
 HEAD_H = 8                      # hat top to shirt collar, in world px (drawn sprites: ~10)
 KEY = [(255, 0, 255), (192, 0, 192), (128, 0, 128)]   # shirt light / mid / shadow
-# theme -> character prefix -> (folder in <theme>/src, {sheet name: (source file, frames to keep or None for all)},
+# theme -> character prefix -> (folder in <theme>/src, {sheet name: (source file, frames to keep or None for all,
+#                                optional size factor when one strip's proportions differ)},
 #                                optional shirt kind, optional recolour)
 # Output sheets are named <prefix><sheet>, e.g. merchant_boat_paddle.png. Each character gets its own palette.
 # A new theme (christmas, kitchen): add an entry here, put the strips in assets/sprites/<theme>/src/<character>/,
@@ -31,6 +32,10 @@ THEMES = {
         '': ('vendor', {                             # the vendor woman (แม่ค้า)
             'boat_idle': ('boat_idle.webp', None),
             'boat_paddle': ('boat_paddle.webp', None),   # 2x3 grid
+            # waiting for approval: waves an order slip (2x3 grid). Gemini drew her hat bigger here, so head
+            # height alone made the boat ~20% small: scaled to match the idle boat's hull
+            'boat_ask': ('boat_ask.webp', None, 1.2),
+            'boat_work': ('boat_work.webp', None, .87),    # packing fruit in a banana leaf (2x3 grid); boat drawn ~14% big
             'foot_idle': ('foot_idle.png', None),
         }),
         'lead_': ('lead', {                          # ป้าแดง, the harbour boss: red blouse, never recoloured
@@ -43,6 +48,7 @@ THEMES = {
         'merchant_': ('merchant', {                  # the vendor man (พ่อค้า)
             'boat_paddle': ('boat_paddle.webp', None),
             'boat_idle': ('boat_idle.webp', None),     # 2x3 grid
+            'boat_ask': ('boat_ask.webp', [0, 1, 2, 3, 4]),  # frame 6 lost the slip
             'foot_idle': ('foot_idle.png', None),
         }),
     },
@@ -175,11 +181,12 @@ def build_theme(theme, characters):
     for prefix, (sub, sheets, *opt) in characters.items():
         shirt_kind, recolor = (opt + ['magenta', True][len(opt):]) if opt else ('magenta', True)
         strips = {}
-        for name, (f, pick) in sheets.items():
+        for name, (f, pick, *size) in sheets.items():
             rgb, mask = load(os.path.join(src, sub, f))
             fr = frames(mask)
             if pick: fr = [fr[i] for i in pick]
-            strips[prefix + name] = (rgb, fr, HEAD_H / np.median([head_height(rgb, m, shirt_kind) for m in fr]))
+            k = HEAD_H / np.median([head_height(rgb, m, shirt_kind) for m in fr]) * (size[0] if size else 1)
+            strips[prefix + name] = (rgb, fr, k)
         build(strips, 1, 28, meta, out, shirt_kind, recolor)
         build(strips, HD, 128, meta, out, shirt_kind, recolor)
     json.dump(meta, open(os.path.join(out, 'sprites.json'), 'w'), indent=1)
