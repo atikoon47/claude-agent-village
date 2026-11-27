@@ -52,15 +52,22 @@
     c.restore(); if (clipY != null) c.restore(); return true;
   }
 
+  // crew slots (js/engine.js CREW: Bobby, Lily, Max, Momo, Pip, Juni, Cocoa) drawn as the vendor man in the
+  // mixed theme. Sub-agents and numbered names ("Max น้อย", "Bobby 2") share their slot, so they match.
+  const MEN = new Set([0, 2, 4]);
+  // card labels per crew slot: the market theme's "แม่ค้า..." with พ่อค้า where the character is a man
+  const crewFor = man => M.crew.map((r, i) => man(i) ? r.replace('แม่ค้า', 'พ่อค้า') : r);
+
   // prefix picks the character's sheets (''=vendor woman, 'merchant_'=vendor man, 'mix'=either, per agent)
   function spriteTheme(id, name, icon, hd, prefix = '') {
-    // mixed: a hash of the agent id decides, so each agent keeps the same vendor across frames, reloads and themes
-    const who = a => prefix !== 'mix' ? prefix : (Math.imul(a.id, 2654435761) >>> 16) & 1 ? 'merchant_' : '';
+    const man = i => prefix === 'mix' ? MEN.has(i) : prefix === 'merchant_';
+    const who = a => man(a.crewIdx) ? 'merchant_' : '';
     return {
     ...M,
     id,
     name,
     icon,
+    crew: crewFor(man),
 
     drawChar(c, a, frame, t) {
       const p = who(a), scale = a.isSub ? .75 : 1, inBoat = a.walking || !onRaft(a.x, a.y);
