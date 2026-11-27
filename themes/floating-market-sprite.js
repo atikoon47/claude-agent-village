@@ -109,6 +109,18 @@
     }
   }
 
+  // Resting loops: frames where the eyes are closed. Played in turn with the others they made the vendors blink
+  // every second or so; instead the open-eye frames loop and a closed one flashes in for a moment every ~4 s.
+  const BLINK = { boat_idle: [2], merchant_boat_idle: [2, 4], merchant_foot_idle: [2] };
+  function restFrame(sheet, t, fps, seed) {
+    const s = SHEETS[sheet + '@4x'] || SHEETS[sheet], shut = BLINK[sheet];
+    if (!s || !shut) return Math.floor(t * fps + seed);
+    const open = [...Array(s.frames).keys()].filter(i => !shut.includes(i));
+    const period = 3.4 + (seed * 0.37) % 1.6, ph = (t + seed * 1.3) % period;
+    if (ph < .13) return shut[Math.floor((t + seed) / period) % shut.length];
+    return open[Math.floor(t * fps + seed) % open.length];
+  }
+
   // prefix picks the character's sheets (''=vendor woman, 'merchant_'=vendor man, 'mix'=either, per agent)
   function spriteTheme(id, name, icon, hd, prefix = '') {
     const man = i => prefix === 'mix' ? MEN.has(i) : prefix === 'merchant_';
@@ -129,7 +141,7 @@
       let flip = a.flip;
       if (a.mode === 'error') flip = Math.sin(t * 10) > 0;
       if (!inBoat) {
-        if (!blit(c, p + 'foot_idle', a.color, Math.floor(t * 2 + a.id), a.x, a.y, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
+        if (!blit(c, p + 'foot_idle', a.color, restFrame(p + 'foot_idle', t, 2, a.id), a.x, a.y, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
         return;
       }
       const bob = Math.round(Math.sin(t * 2.2 + a.id) * .6), x = a.x, y = a.y + bob;
@@ -143,7 +155,7 @@
       const working = !a.walking && !asking && (a.mode === 'work' || a.mode === 'live') && SHEETS[p + 'boat_work'];
       const sheet = asking ? p + 'boat_ask' : working ? p + 'boat_work'
         : a.walking && SHEETS[p + 'boat_paddle'] ? p + 'boat_paddle' : p + 'boat_idle';
-      const f = Math.floor(t * (a.walking ? 8 : asking || working ? 5 : 3) + a.id);
+      const f = sheet === p + 'boat_idle' ? restFrame(sheet, t, 3, a.id) : Math.floor(t * (a.walking ? 8 : asking || working ? 5 : 3) + a.id);
       if (!blit(c, sheet, a.color, f, x, y + 3, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
     },
     // ป้าแดง: at her desk in the permission centre, or paddling out to check on someone
@@ -168,7 +180,7 @@
       const who = i % 2 ? 'merchant_' : '', sheet = who + 'foot_idle';
       const counter = (this.stallFronts || []).find(([sx, , w]) => x >= sx && x <= sx + w);
       // the sprites are ~6 px taller than the drawn vendors: sink them so the head sits where theirs did
-      if (!blit(c, sheet, col, Math.floor(t * 1.5 + i), x, y + 6, i === 2, 1, hd, counter ? counter[1] : null))
+      if (!blit(c, sheet, col, restFrame(sheet, t, 1.5, i + 7), x, y + 6, i === 2, 1, hd, counter ? counter[1] : null))
         M.drawStallVendor ? M.drawStallVendor.call(this, c, x, y, col, i, t) : null;
     },
     drawLeadPortrait(c, x, y) { if (!blit(c, 'lead_portrait', null, 0, 8, 25, false)) M.drawLeadPortrait.call(this, c, x, y); },
