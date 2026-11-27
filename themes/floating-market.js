@@ -296,7 +296,10 @@
       // bunting between the houses and over the left stall
       swag(c, 112, 22, 158, 22, 8, t); swag(c, 242, 22, 286, 22, 8, t); swag(c, 0, 26, 26, 26, 4, t); swag(c, 386, 26, 400, 26, 3, t);
       // stall vendors waving behind their counters (counter front redrawn so it hides their legs)
-      [[32, 184, '#e8553f'], [316, 190, '#3a7bd5'], [368, 186, '#2f9a57']].forEach(([x, y, col], i) => vendor(c, { x, y, id: 50 + i, color: col, isSub: false, mode: 'work', flip: i === 2 }, 0, t + i * .4, false));
+      // (a theme built on this one can draw them its own way through drawStallVendor)
+      [[32, 184, '#e8553f'], [316, 190, '#3a7bd5'], [368, 186, '#2f9a57']].forEach(([x, y, col], i) => this.drawStallVendor
+        ? this.drawStallVendor(c, x, y, col, i, t)
+        : vendor(c, { x, y, id: 50 + i, color: col, isSub: false, mode: 'work', flip: i === 2 }, 0, t + i * .4, false));
       for (const [x, cy, w] of this.stallFronts) { R(c, x, cy, w, 12, '#8a5630'); R(c, x, cy, w, 3, '#b07a44'); for (let i = x + 3; i < x + w; i += 6) R(c, i, cy + 4, 1, 8, '#6e4224'); for (let k = 0; k < w - 6; k += 5) PX.ellipse(c, x + 5 + k, cy - 1, 2, 2, FRUIT[(k / 5) % 5]); }
     },
     drawWeather(c, t) {

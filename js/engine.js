@@ -4,6 +4,12 @@
 (() => {
   const W = PX.W, H = PX.H, $ = s => document.querySelector(s);
   const cv = $('#map'), ctx = cv.getContext('2d');
+  // high-res layer over the map, at screen resolution: themes may draw detailed sprites on ctx.hd
+  // (same world coordinates, but finer than one world pixel). Clicks pass through to the map.
+  const hd = document.createElement('canvas'); hd.id = 'hd';
+  hd.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;image-rendering:pixelated';
+  cv.after(hd);
+  const hctx = hd.getContext('2d'); ctx.hd = hctx;
   const stageBox = $('#stagebox'), overlay = $('#overlay'), mapCell = $('#mapcell');
   const mini = $('#mini'), mctx = mini.getContext('2d');
   const staticLayer = document.createElement('canvas'); staticLayer.width = W; staticLayer.height = H;
@@ -543,14 +549,23 @@
     const r = mapCell.getBoundingClientRect();
     scale = Math.max(1, Math.min((r.width - 8) / W, (r.height - 8) / H));
     stageBox.style.width = W * scale + 'px'; stageBox.style.height = H * scale + 'px';
+    const dpr = devicePixelRatio || 1; hd.width = Math.round(W * scale * dpr); hd.height = Math.round(H * scale * dpr);
     document.querySelectorAll('.sign').forEach(s => { s.style.left = s.dataset.x * scale + 'px'; s.style.top = s.dataset.y * scale + 'px'; });
     document.documentElement.style.setProperty('--px', scale);
   }
   addEventListener('resize', fit);
 
   /* ---------------- theme switching ---------------- */
+  let artStyle = localStorage.getItem('av-style') || 'pixel';
   function setTheme(id) {
-    theme = THEMES[id] || THEMES[THEME_ORDER[0]];
+    const base = THEMES[id] || THEMES[THEME_ORDER[0]];
+    theme = (base.styles && base.styles[artStyle]) || base;
+    document.querySelectorAll('#styleSeg button, #styleMini').forEach(b => {
+      if (b.id === 'styleMini') { b.classList.toggle('on', artStyle === 'hd'); b.title = artStyle === 'hd' ? 'ภาพ HD (คลิกเพื่อกลับเป็นพิกเซล)' : 'ภาพพิกเซล (คลิกเพื่อดู HD)'; }
+      else b.classList.toggle('on', b.dataset.s === artStyle);
+    });
+    // say when this theme has no art in the chosen style yet (it falls back to its pixel art)
+    $('#styleNote').textContent = artStyle !== 'pixel' && theme === base ? 'ธีมนี้ยังไม่มีภาพ HD ใช้แบบพิกเซลแทน' : '';
     sctx.clearRect(0, 0, W, H); theme.drawStatic(sctx);
     for (const [k, v] of Object.entries(theme.ui)) document.documentElement.style.setProperty('--' + k, v);
     $('#title').textContent = theme.title; $('#titleIcon').textContent = theme.icon; $('#loc').textContent = theme.location;
@@ -564,12 +579,16 @@
       d.innerHTML = `<span class="si">${s.icon}</span><span><b>${s.text}</b><small>${s.sub}</small></span>`;
       overlay.prepend(d);
     }
-    document.querySelectorAll('.themeBtn,.tb').forEach(b => b.classList.toggle('on', b.dataset.id === theme.id));
+    document.querySelectorAll('.themeBtn,#themeMini .tb').forEach(b => b.classList.toggle('on', b.dataset.id === theme.id));
     bossHome();
     for (const a of agents) { const p = targetXY(a); a.x = p.x; a.y = p.y; if (a.cur && a.cur.type === 'perm') { const q = targetXY(a); a.x = q.x; a.y = q.y; } }
     history.replaceState(null, '', '#' + theme.id);
     renderCards(); fit();
     if (agents.length) log(null, `สลับธีมเป็น ${theme.icon} ${theme.name}`);
+  }
+  function setStyle(s) {
+    artStyle = s; try { localStorage.setItem('av-style', s); } catch { }
+    setTheme(theme.id);
   }
 
   /* ---------------- panels ---------------- */
@@ -705,6 +724,11 @@
     b.className = 'themeBtn'; b.dataset.id = id; b.innerHTML = `<span>${t.icon}</span>${t.name}`;
     b.onclick = () => setTheme(id); tl.appendChild(b);
   }
+  for (const [s, label] of STYLES) {
+    const b = document.createElement('button'); b.dataset.s = s; b.textContent = label;
+    b.onclick = () => setStyle(s); $('#styleSeg').appendChild(b);
+  }
+  $('#styleMini').onclick = () => setStyle(artStyle === 'hd' ? 'pixel' : 'hd');
   document.querySelectorAll('#speed button').forEach(b => b.onclick = () => {
     speed = +b.dataset.s; document.querySelectorAll('#speed button').forEach(x => x.classList.toggle('on', x === b));
   });
@@ -760,6 +784,8 @@
     tickBoss(dt);
 
     ctx.drawImage(staticLayer, 0, 0);
+    hctx.setTransform(1, 0, 0, 1, 0, 0); hctx.clearRect(0, 0, hd.width, hd.height);
+    hctx.setTransform(hd.width / W, 0, 0, hd.height / H, 0, 0); hctx.imageSmoothingEnabled = false;
     theme.drawAmbient(ctx, t);
     theme.drawCarrier(ctx, car, t);
     boss.frame = boss.walking ? (Math.floor(t * 8) % 2 ? 1 : 2) : 0;

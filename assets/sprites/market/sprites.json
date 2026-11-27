@@ -1,0 +1,178 @@
+{
+ "boat_idle": {
+  "w": 30,
+  "h": 21,
+  "frames": 4,
+  "ax": 12,
+  "ay": 20,
+  "density": 1
+ },
+ "boat_paddle": {
+  "w": 32,
+  "h": 22,
+  "frames": 6,
+  "ax": 13,
+  "ay": 21,
+  "density": 1
+ },
+ "foot_idle": {
+  "w": 13,
+  "h": 27,
+  "frames": 3,
+  "ax": 6,
+  "ay": 25,
+  "density": 1
+ },
+ "boat_idle@4x": {
+  "w": 121,
+  "h": 84,
+  "frames": 4,
+  "ax": 50,
+  "ay": 83,
+  "density": 4
+ },
+ "boat_paddle@4x": {
+  "w": 130,
+  "h": 89,
+  "frames": 6,
+  "ax": 53,
+  "ay": 85,
+  "density": 4
+ },
+ "foot_idle@4x": {
+  "w": 51,
+  "h": 108,
+  "frames": 3,
+  "ax": 24,
+  "ay": 105,
+  "density": 4
+ },
+ "lead_desk_idle": {
+  "w": 13,
+  "h": 17,
+  "frames": 3,
+  "ax": 7,
+  "ay": 16,
+  "density": 1
+ },
+ "lead_desk_stamp": {
+  "w": 14,
+  "h": 17,
+  "frames": 4,
+  "ax": 8,
+  "ay": 16,
+  "density": 1
+ },
+ "lead_desk_wave": {
+  "w": 16,
+  "h": 17,
+  "frames": 3,
+  "ax": 9,
+  "ay": 16,
+  "density": 1
+ },
+ "lead_boat_paddle": {
+  "w": 38,
+  "h": 24,
+  "frames": 4,
+  "ax": 16,
+  "ay": 23,
+  "density": 1
+ },
+ "lead_portrait": {
+  "w": 12,
+  "h": 17,
+  "frames": 1,
+  "ax": 6,
+  "ay": 16,
+  "density": 1
+ },
+ "lead_desk_idle@4x": {
+  "w": 54,
+  "h": 68,
+  "frames": 3,
+  "ax": 32,
+  "ay": 67,
+  "density": 4
+ },
+ "lead_desk_stamp@4x": {
+  "w": 54,
+  "h": 68,
+  "frames": 4,
+  "ax": 32,
+  "ay": 66,
+  "density": 4
+ },
+ "lead_desk_wave@4x": {
+  "w": 66,
+  "h": 69,
+  "frames": 3,
+  "ax": 38,
+  "ay": 67,
+  "density": 4
+ },
+ "lead_boat_paddle@4x": {
+  "w": 156,
+  "h": 99,
+  "frames": 4,
+  "ax": 68,
+  "ay": 93,
+  "density": 4
+ },
+ "lead_portrait@4x": {
+  "w": 48,
+  "h": 68,
+  "frames": 1,
+  "ax": 26,
+  "ay": 67,
+  "density": 4
+ },
+ "merchant_boat_paddle": {
+  "w": 35,
+  "h": 25,
+  "frames": 4,
+  "ax": 13,
+  "ay": 24,
+  "density": 1
+ },
+ "merchant_boat_idle": {
+  "w": 36,
+  "h": 26,
+  "frames": 6,
+  "ax": 13,
+  "ay": 24,
+  "density": 1
+ },
+ "merchant_foot_idle": {
+  "w": 11,
+  "h": 25,
+  "frames": 3,
+  "ax": 5,
+  "ay": 24,
+  "density": 1
+ },
+ "merchant_boat_paddle@4x": {
+  "w": 138,
+  "h": 101,
+  "frames": 4,
+  "ax": 51,
+  "ay": 98,
+  "density": 4
+ },
+ "merchant_boat_idle@4x": {
+  "w": 143,
+  "h": 100,
+  "frames": 6,
+  "ax": 53,
+  "ay": 96,
+  "density": 4
+ },
+ "merchant_foot_idle@4x": {
+  "w": 46,
+  "h": 100,
+  "frames": 3,
+  "ax": 21,
+  "ay": 99,
+  "density": 4
+ }
+}
