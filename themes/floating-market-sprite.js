@@ -1,6 +1,5 @@
-/* Theme pack: Floating Market with PNG sprites (test).
-   Same scene and story as the 'market' theme; only the vendors are drawn from sprite sheets
-   (assets/sprites/*.png, built by tools/build-sprites.py) instead of rectangles.
+/* HD style of the Floating Market theme (Pixel/HD switch): same scene and story, but the vendors and ป้าแดง are
+   AI-made sprites (assets/sprites/market/*.png, built by tools/build-sprites.py) drawn on the high-res layer.
    The shirt in the sheets uses 3 magenta key shades, recoloured here to each agent's colour. */
 (() => {
   const M = THEMES.market;
@@ -11,11 +10,12 @@
   const onRaft = (x, y) => x >= RAFT.x && x <= RAFT.x + RAFT.w && y >= RAFT.y - 2 && y <= RAFT.y + RAFT.h;
 
   const SHEETS = {}, tinted = new Map();
-  fetch('assets/sprites/sprites.json').then(r => r.json()).then(meta => {
+  const DIR = 'assets/sprites/market/';
+  fetch(DIR + 'sprites.json').then(r => r.json()).then(meta => {
     for (const [name, m] of Object.entries(meta)) {
       const img = new Image();
       img.onload = () => { SHEETS[name] = { ...m, img }; tinted.clear(); };
-      img.src = `assets/sprites/${name}.png`;
+      img.src = `${DIR}${name}.png`;
     }
   });
 
@@ -115,5 +115,5 @@
   }
   }
   // vendor men and women by crew slot, sprites on the high-res layer
-  registerTheme(spriteTheme('marketHD', 'Floating Market HD', '🧺', true, 'mix'));
+  registerStyle('market', 'hd', spriteTheme('market', M.name, M.icon, true, 'mix'));
 })();

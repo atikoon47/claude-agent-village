@@ -1,45 +1,51 @@
 """Turn AI-made sprite strips (big fake pixel art on a flat #00FF00 background) into small real pixel-art sheets.
 
-  python tools/build-sprites.py
+  python tools/build-sprites.py            every theme in THEMES
+  python tools/build-sprites.py market     one theme
 
-For each strip in assets/sprites/src it:
+Each theme has its own folder: sources in assets/sprites/<theme>/src/<character>/, output next to them.
+For each strip it:
   1. keys out the green background,
-  2. finds one blob per frame (drops number labels and other small bits under the figures),
+  2. finds one blob per frame (one row or a grid; drops number labels and other small bits under the figures),
   3. scales every frame so hat-top-to-collar is HEAD_H world pixels (keeps the character the same size in every pose),
-  4. reduces colours to one shared palette, snaps alpha to on/off,
+  4. reduces colours to one palette per character, snaps alpha to on/off,
   5. turns the magenta shirt into 3 exact key shades the game recolours per agent,
-  6. writes assets/sprites/<name>.png (frames side by side), <name>@4x.png (same size in the world, 4x the detail,
-     for the high-res character layer) + assets/sprites/sprites.json (cell size, anchor, density).
+  6. writes <theme>/<name>.png (frames side by side), <name>@4x.png (same size in the world, 4x the detail,
+     for the high-res character layer) + <theme>/sprites.json (cell size, anchor, density).
 """
 import json, os, sys
 import numpy as np, cv2
 from PIL import Image
 
 ROOT = os.path.join(os.path.dirname(__file__), '..', 'assets', 'sprites')
-SRC = os.path.join(ROOT, 'src')
 HD = 4                          # density of the high-res sheets (sheet px per world px)
 HEAD_H = 8                      # hat top to shirt collar, in world px (drawn sprites: ~10)
 KEY = [(255, 0, 255), (192, 0, 192), (128, 0, 128)]   # shirt light / mid / shadow
-# character -> {sheet name: (source file in assets/sprites/src/<dir>, frames to keep or None for all)}
+# theme -> character prefix -> (folder in <theme>/src, {sheet name: (source file, frames to keep or None for all)},
+#                                optional shirt kind, optional recolour)
 # Output sheets are named <prefix><sheet>, e.g. merchant_boat_paddle.png. Each character gets its own palette.
-CHARACTERS = {
-    '': ('', {                                   # the vendor woman (first test)
-        'boat_idle': ('boat_idle.webp', None),
-        'boat_paddle': ('boat_paddle.webp', None),   # 2x3 grid
-        'foot_idle': ('foot_idle.png', None),
-    }),
-    'lead_': ('lead', {                          # ป้าแดง, the harbour boss: red blouse, never recoloured
-        'desk_idle': ('desk_idle.webp', None),
-        'desk_stamp': ('desk_stamp.webp', None),
-        'desk_wave': ('desk_wave.webp', None),
-        'boat_paddle': ('boat_paddle.png', None),
-        'portrait': ('ref.png', None),
-    }, 'red', False),
-    'merchant_': ('merchant', {                  # the vendor man
-        'boat_paddle': ('boat_paddle.webp', None),
-        'boat_idle': ('boat_idle.webp', None),     # 2x3 grid
-        'foot_idle': ('foot_idle.png', None),
-    }),
+# A new theme (christmas, kitchen): add an entry here, put the strips in assets/sprites/<theme>/src/<character>/,
+# and give the theme an HD style (registerStyle) like themes/floating-market-sprite.js.
+THEMES = {
+    'market': {
+        '': ('vendor', {                             # the vendor woman (แม่ค้า)
+            'boat_idle': ('boat_idle.webp', None),
+            'boat_paddle': ('boat_paddle.webp', None),   # 2x3 grid
+            'foot_idle': ('foot_idle.png', None),
+        }),
+        'lead_': ('lead', {                          # ป้าแดง, the harbour boss: red blouse, never recoloured
+            'desk_idle': ('desk_idle.webp', None),
+            'desk_stamp': ('desk_stamp.webp', None),
+            'desk_wave': ('desk_wave.webp', None),
+            'boat_paddle': ('boat_paddle.png', None),
+            'portrait': ('ref.png', None),
+        }, 'red', False),
+        'merchant_': ('merchant', {                  # the vendor man (พ่อค้า)
+            'boat_paddle': ('boat_paddle.webp', None),
+            'boat_idle': ('boat_idle.webp', None),     # 2x3 grid
+            'foot_idle': ('foot_idle.png', None),
+        }),
+    },
 }
 
 
@@ -115,7 +121,7 @@ def shrink(rgb, m, k):
     return np.dstack([col, al]).clip(0, 255).astype(np.uint8)
 
 
-def build(strips, density, colors, meta, shirt_kind='magenta', recolor=True):
+def build(strips, density, colors, meta, out, shirt_kind='magenta', recolor=True):
     """density 1 = one sheet pixel per world pixel; density 4 = 4x4 sheet pixels per world pixel (high-res layer)."""
     sheets = {}
     for name, (rgb, fr, k) in strips.items():
@@ -158,25 +164,33 @@ def build(strips, density, colors, meta, shirt_kind='magenta', recolor=True):
         im0, cx0, cy0 = done[0]
         ax, ay = CX, CY - cy0 + im0.shape[0] - 1        # anchor: under the shirt, at the first frame's bottom
         key = name if density == 1 else f'{name}@{density}x'
-        Image.fromarray(sheet, 'RGBA').save(os.path.join(ROOT, key + '.png'))
+        Image.fromarray(sheet, 'RGBA').save(os.path.join(out, key + '.png'))
         meta[key] = {'w': cw, 'h': ch, 'frames': len(done), 'ax': ax, 'ay': ay, 'density': density}
         print(key, len(sh), 'frames', f'{cw}x{ch}')
 
 
-def main():
+def build_theme(theme, characters):
+    out, src = os.path.join(ROOT, theme), os.path.join(ROOT, theme, 'src')
     meta = {}
-    for prefix, (sub, sheets, *opt) in CHARACTERS.items():
+    for prefix, (sub, sheets, *opt) in characters.items():
         shirt_kind, recolor = (opt + ['magenta', True][len(opt):]) if opt else ('magenta', True)
         strips = {}
         for name, (f, pick) in sheets.items():
-            rgb, mask = load(os.path.join(SRC, sub, f))
+            rgb, mask = load(os.path.join(src, sub, f))
             fr = frames(mask)
             if pick: fr = [fr[i] for i in pick]
             strips[prefix + name] = (rgb, fr, HEAD_H / np.median([head_height(rgb, m, shirt_kind) for m in fr]))
-        build(strips, 1, 28, meta, shirt_kind, recolor)
-        build(strips, HD, 128, meta, shirt_kind, recolor)
-    json.dump(meta, open(os.path.join(ROOT, 'sprites.json'), 'w'), indent=1)
+        build(strips, 1, 28, meta, out, shirt_kind, recolor)
+        build(strips, HD, 128, meta, out, shirt_kind, recolor)
+    json.dump(meta, open(os.path.join(out, 'sprites.json'), 'w'), indent=1)
 
+
+def main():
+    pick = sys.argv[1:] or list(THEMES)
+    for theme in pick:
+        if theme not in THEMES: sys.exit(f'unknown theme {theme!r}; known: {", ".join(THEMES)}')
+        print(f'== {theme}')
+        build_theme(theme, THEMES[theme])
 
 if __name__ == '__main__':
     main()

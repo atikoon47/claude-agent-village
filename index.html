@@ -77,6 +77,9 @@
   .legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
 
   .modeRow{padding:0 8px 8px}
+  .styleRow{margin:2px 8px 4px}.styleRow .seg button{flex:1;padding:5px 4px}
+  #styleNote{font-family:"Mitr";font-size:11px;opacity:.75;margin-top:5px}#styleNote:empty{display:none}
+  .compactBar .styleMini{font-family:"Pixelify Sans";font-size:13px;padding:4px 7px}
   .modeRow .seg{width:100%}.modeRow .seg button{flex:1;padding:6px 4px}
   .liveStat{display:flex;align-items:center;gap:7px;padding:0 12px 10px;font-family:"Mitr";font-size:12px;color:var(--sub)}
   .acct{cursor:pointer;user-select:none;padding:0 12px 10px;font-family:"Mitr";font-size:11px;color:var(--sub);word-break:break-all}
@@ -219,7 +222,7 @@
     <div class="panel pill" id="limitPill" style="display:none"><span class="e">🔋</span><span id="sLimit"></span><span class="lbl">ลิมิต Pro</span></div>
     <div class="panel pill duty" title="agent ที่กำลังทำงาน / ทั้งหมด"><i></i><span class="dl">On Duty </span><span id="sWorking" class="lbl"></span></div>
     <div class="spacer"></div>
-    <div class="panel compactBar" id="compactBar"><span id="themeMini" style="display:flex;gap:4px"></span></div>
+    <div class="panel compactBar" id="compactBar"><span id="themeMini" style="display:flex;gap:4px"></span><button class="tb styleMini" id="styleMini">HD</button></div>
     <div class="panel ctrl" id="demoCtrl">
       <div class="seg" id="speed"><button data-s="0.5">0.5×</button><button data-s="1" class="on">1×</button><button data-s="2">2×</button><button data-s="4">4×</button></div>
       <label title="อนุมัติเองใน 6 วิ (จำลอง)"><input type="checkbox" id="auto" checked><span>อนุมัติเองใน 6 วิ</span></label>
@@ -227,7 +230,8 @@
   </header>
 
   <aside class="left">
-    <div class="panel"><div class="ptitle">🎨 Themes</div><div id="themeList"></div></div>
+    <div class="panel"><div class="ptitle">🎨 Themes</div><div id="themeList"></div>
+      <div class="styleRow"><div class="seg" id="styleSeg" title="สไตล์ภาพ: ใช้กับทุกธีม"></div><div id="styleNote"></div></div></div>
     <div class="panel" id="teamPanel">
       <div class="ptitle">🧑‍🤝‍🧑 ทีม</div>
       <div class="modeRow"><div class="seg" id="modeSeg"><button data-m="live">🔴 Live</button><button data-m="demo" class="on">🎲 จำลอง</button></div></div>

@@ -556,8 +556,16 @@
   addEventListener('resize', fit);
 
   /* ---------------- theme switching ---------------- */
+  let artStyle = localStorage.getItem('av-style') || 'pixel';
   function setTheme(id) {
-    theme = THEMES[id] || THEMES[THEME_ORDER[0]];
+    const base = THEMES[id] || THEMES[THEME_ORDER[0]];
+    theme = (base.styles && base.styles[artStyle]) || base;
+    document.querySelectorAll('#styleSeg button, #styleMini').forEach(b => {
+      if (b.id === 'styleMini') { b.classList.toggle('on', artStyle === 'hd'); b.title = artStyle === 'hd' ? 'ภาพ HD (คลิกเพื่อกลับเป็นพิกเซล)' : 'ภาพพิกเซล (คลิกเพื่อดู HD)'; }
+      else b.classList.toggle('on', b.dataset.s === artStyle);
+    });
+    // say when this theme has no art in the chosen style yet (it falls back to its pixel art)
+    $('#styleNote').textContent = artStyle !== 'pixel' && theme === base ? 'ธีมนี้ยังไม่มีภาพ HD ใช้แบบพิกเซลแทน' : '';
     sctx.clearRect(0, 0, W, H); theme.drawStatic(sctx);
     for (const [k, v] of Object.entries(theme.ui)) document.documentElement.style.setProperty('--' + k, v);
     $('#title').textContent = theme.title; $('#titleIcon').textContent = theme.icon; $('#loc').textContent = theme.location;
@@ -571,12 +579,16 @@
       d.innerHTML = `<span class="si">${s.icon}</span><span><b>${s.text}</b><small>${s.sub}</small></span>`;
       overlay.prepend(d);
     }
-    document.querySelectorAll('.themeBtn,.tb').forEach(b => b.classList.toggle('on', b.dataset.id === theme.id));
+    document.querySelectorAll('.themeBtn,#themeMini .tb').forEach(b => b.classList.toggle('on', b.dataset.id === theme.id));
     bossHome();
     for (const a of agents) { const p = targetXY(a); a.x = p.x; a.y = p.y; if (a.cur && a.cur.type === 'perm') { const q = targetXY(a); a.x = q.x; a.y = q.y; } }
     history.replaceState(null, '', '#' + theme.id);
     renderCards(); fit();
     if (agents.length) log(null, `สลับธีมเป็น ${theme.icon} ${theme.name}`);
+  }
+  function setStyle(s) {
+    artStyle = s; try { localStorage.setItem('av-style', s); } catch { }
+    setTheme(theme.id);
   }
 
   /* ---------------- panels ---------------- */
@@ -712,6 +724,11 @@
     b.className = 'themeBtn'; b.dataset.id = id; b.innerHTML = `<span>${t.icon}</span>${t.name}`;
     b.onclick = () => setTheme(id); tl.appendChild(b);
   }
+  for (const [s, label] of STYLES) {
+    const b = document.createElement('button'); b.dataset.s = s; b.textContent = label;
+    b.onclick = () => setStyle(s); $('#styleSeg').appendChild(b);
+  }
+  $('#styleMini').onclick = () => setStyle(artStyle === 'hd' ? 'pixel' : 'hd');
   document.querySelectorAll('#speed button').forEach(b => b.onclick = () => {
     speed = +b.dataset.s; document.querySelectorAll('#speed button').forEach(x => x.classList.toggle('on', x === b));
   });

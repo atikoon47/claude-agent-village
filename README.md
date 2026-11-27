@@ -12,6 +12,7 @@
 - **Agent Activity**: ดูว่าคุณพิมพ์อะไร Claude ใช้เครื่องมืออะไร และตอบว่าอะไร (ย่อสั้น) มีปุ่ม 🙈 ซ่อนข้อความก่อนแคปหน้าจอ
 - **🎲 จำลอง**: ข้อมูลสุ่มในหน้าเว็บ ไว้ดูเล่น ไม่เกี่ยวกับ Claude เลย
 - หัวหน้า (ซานต้า / หัวหน้าเชฟ / ป้าแดง) ตรวจงานทุกชิ้น ทักทาย agent ใหม่ และเดินตรวจตอนว่าง
+- **สไตล์ภาพ พิกเซล / HD**: ปุ่มใต้รายการธีม ใช้กับทุกธีมและจำค่าไว้ ตอนนี้ธีม Floating Market มีแบบ HD (ธีมที่ยังไม่มีจะใช้แบบพิกเซลแทน)
 
 ## ความปลอดภัยและค่าใช้จ่าย
 
@@ -68,8 +69,8 @@ index.html          หน้าเว็บ
 js/engine.js        ตัวละคร, โหมด Live/จำลอง, activity log
 js/pixel.js         ตัวช่วยวาดพิกเซล + ระบบธีม
 themes/*.js         ธีมแต่ละแบบ
-assets/sprites/     สไปรต์ของธีม Floating Market HD (ต้นฉบับอยู่ใน src/)
-tools/build-sprites.py  แปลงภาพต้นฉบับเป็นสไปรต์
+assets/sprites/<ธีม>/        สไปรต์แบบ HD ของแต่ละธีม (ต้นฉบับอยู่ใน src/<ตัวละคร>/)
+tools/build-sprites.py      แปลงภาพต้นฉบับเป็นสไปรต์: python tools/build-sprites.py [ธีม]
 server.js           เซิร์ฟเวอร์ local (127.0.0.1, พอร์ตตาม port.js)
 port.js             เลือกพอร์ต: PORT env > config.json > 5179
 hooks/hook.js       hook ที่ส่งสรุปเหตุการณ์มาที่เซิร์ฟเวอร์
@@ -80,10 +81,10 @@ start.bat           ดับเบิลคลิกเพื่อเปิด
 
 ## ที่มาของภาพ
 
-- ธีม Christmas Village, Restaurant Kitchen และ Floating Market วาดด้วยโค้ด (`js/pixel.js`, `themes/*.js`)
-- ตัวละครในธีม **Floating Market HD** (แม่ค้า พ่อค้า และป้าแดง) **สร้างด้วย AI (Google Gemini)** ไม่ได้วาดด้วยมือ
+- สไตล์ **พิกเซล** ของทุกธีมวาดด้วยโค้ด (`js/pixel.js`, `themes/*.js`)
+- ตัวละครในสไตล์ **HD** (ตอนนี้: แม่ค้า พ่อค้า และป้าแดงของ Floating Market) **สร้างด้วย AI (Google Gemini)** ไม่ได้วาดด้วยมือ
   แล้วแปลงเป็นสไปรต์ด้วย `tools/build-sprites.py` (ตัดพื้นหลัง ย่อขนาด ลดสี เปลี่ยนสีเสื้อตาม agent)
-  ภาพต้นฉบับจาก Gemini เก็บไว้ใน `assets/sprites/src/`
+  ภาพต้นฉบับจาก Gemini เก็บไว้ใน `assets/sprites/<ธีม>/src/`
 
 ## License
 

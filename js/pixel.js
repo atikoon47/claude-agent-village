@@ -3,6 +3,11 @@
 window.THEMES = {};
 window.THEME_ORDER = [];
 function registerTheme(t) { THEMES[t.id] = t; THEME_ORDER.push(t.id); }
+// Art styles are not themes: a style is the same scene drawn another way (e.g. 'hd': AI-made sprites on the
+// high-res layer). It is stored on the theme (THEMES.market.styles.hd) and picked with the Pixel/HD switch,
+// so the theme list never grows. A theme without the chosen style just draws its own pixel art.
+function registerStyle(themeId, style, t) { const b = THEMES[themeId]; (b.styles ||= {})[style] = { ...t, id: themeId }; }
+const STYLES = [['pixel', 'พิกเซล'], ['hd', 'HD']];
 
 const PX = {
   W: 400, H: 240,
