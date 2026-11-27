@@ -52,8 +52,10 @@
     c.restore(); if (clipY != null) c.restore(); return true;
   }
 
-  // prefix picks the character's sheets (''=vendor woman, 'merchant_'=vendor man)
+  // prefix picks the character's sheets (''=vendor woman, 'merchant_'=vendor man, 'mix'=either, per agent)
   function spriteTheme(id, name, icon, hd, prefix = '') {
+    // mixed: a hash of the agent id decides, so each agent keeps the same vendor across frames, reloads and themes
+    const who = a => prefix !== 'mix' ? prefix : (Math.imul(a.id, 2654435761) >>> 16) & 1 ? 'merchant_' : '';
     return {
     ...M,
     id,
@@ -61,18 +63,18 @@
     icon,
 
     drawChar(c, a, frame, t) {
-      const scale = a.isSub ? .75 : 1, inBoat = a.walking || !onRaft(a.x, a.y);
+      const p = who(a), scale = a.isSub ? .75 : 1, inBoat = a.walking || !onRaft(a.x, a.y);
       let flip = a.flip;
       if (a.mode === 'error') flip = Math.sin(t * 10) > 0;
       if (!inBoat) {
-        if (!blit(c, prefix + 'foot_idle', a.color, Math.floor(t * 2 + a.id), a.x, a.y, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
+        if (!blit(c, p + 'foot_idle', a.color, Math.floor(t * 2 + a.id), a.x, a.y, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
         return;
       }
       const bob = Math.round(Math.sin(t * 2.2 + a.id) * .6), x = a.x, y = a.y + bob;
       if (a.walking) for (let i = 0; i < 3; i++) R(c, x + (flip ? 1 : -1) * (14 + i * 4), y + 2 + (i % 2), 3, 1, `rgba(220,255,245,${.55 - i * .15})`);
       PX.ellipse(c, Math.round(x), Math.round(y + 3), 13 * scale, 2, 'rgba(10,50,50,.35)');
       // moving: the paddle strip if this character has one, else the idle loop run faster
-      const sheet = a.walking && SHEETS[prefix + 'boat_paddle'] ? prefix + 'boat_paddle' : prefix + 'boat_idle';
+      const sheet = a.walking && SHEETS[p + 'boat_paddle'] ? p + 'boat_paddle' : p + 'boat_idle';
       const f = Math.floor(t * (a.walking ? 8 : 3) + a.id);
       if (!blit(c, sheet, a.color, f, x, y + 3, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
     },
@@ -102,10 +104,11 @@
         M.drawStallVendor ? M.drawStallVendor.call(this, c, x, y, col, i, t) : null;
     },
     drawLeadPortrait(c, x, y) { if (!blit(c, 'lead_portrait', null, 0, 8, 25, false)) M.drawLeadPortrait.call(this, c, x, y); },
-    drawPortrait(c, a) { if (!blit(c, prefix + 'foot_idle', a.color, 0, a.x, 25, false)) M.drawPortrait.call(this, c, a); },
+    drawPortrait(c, a) { if (!blit(c, who(a) + 'foot_idle', a.color, 0, a.x, 25, false)) M.drawPortrait.call(this, c, a); },
   }
   }
   registerTheme(spriteTheme('marketSprite', 'Floating Market (sprite test)', '🧺', false));
   registerTheme(spriteTheme('marketSpriteHD', 'Floating Market (sprite HD test)', '🔍', true));
   registerTheme(spriteTheme('marketMerchantHD', 'Floating Market (พ่อค้า HD test)', '👨‍🌾', true, 'merchant_'));
+  registerTheme(spriteTheme('marketMixHD', 'Floating Market (พ่อค้า+แม่ค้า HD test)', '🎲', true, 'mix'));
 })();
