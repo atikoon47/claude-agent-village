@@ -8,7 +8,8 @@ For each strip in assets/sprites/src it:
   3. scales every frame so hat-top-to-collar is HEAD_H world pixels (keeps the character the same size in every pose),
   4. reduces colours to one shared palette, snaps alpha to on/off,
   5. turns the magenta shirt into 3 exact key shades the game recolours per agent,
-  6. writes assets/sprites/<name>.png (frames side by side) + assets/sprites/sprites.json (cell size, anchor).
+  6. writes assets/sprites/<name>.png (frames side by side), <name>@4x.png (same size in the world, 4x the detail,
+     for the high-res character layer) + assets/sprites/sprites.json (cell size, anchor, density).
 """
 import json, os, sys
 import numpy as np, cv2
@@ -16,6 +17,7 @@ from PIL import Image
 
 ROOT = os.path.join(os.path.dirname(__file__), '..', 'assets', 'sprites')
 SRC = os.path.join(ROOT, 'src')
+HD = 4                          # density of the high-res sheets (sheet px per world px)
 HEAD_H = 8                      # hat top to shirt collar, in world px (drawn sprites: ~10)
 KEY = [(255, 0, 255), (192, 0, 192), (128, 0, 128)]   # shirt light / mid / shadow
 STRIPS = {                      # name -> source file
@@ -74,21 +76,19 @@ def shrink(rgb, m, k):
     return np.dstack([col, al]).clip(0, 255).astype(np.uint8)
 
 
-def main():
-    meta, sheets = {}, {}
-    for name, f in STRIPS.items():
-        rgb, mask = load(os.path.join(SRC, f))
-        fr = frames(mask)
-        k = HEAD_H / np.median([head_height(rgb, m) for m in fr])
-        sheets[name] = [shrink(rgb, m, k) for m in fr]
+def build(strips, density, colors, meta):
+    """density 1 = one sheet pixel per world pixel; density 4 = 4x4 sheet pixels per world pixel (high-res layer)."""
+    sheets = {}
+    for name, (rgb, fr, k) in strips.items():
+        sheets[name] = [shrink(rgb, m, k * density) for m in fr]
 
     # shared palette across every frame of every sheet
     opaque = np.concatenate([s[s[..., 3] > 127][:, :3] for sh in sheets.values() for s in sh])
-    pal_img = Image.fromarray(opaque.reshape(1, -1, 3)).quantize(colors=28, method=Image.Quantize.MEDIANCUT)
+    pal_img = Image.fromarray(opaque.reshape(1, -1, 3)).quantize(colors=colors, method=Image.Quantize.MEDIANCUT)
 
     for name, sh in sheets.items():
-        cw = max(s.shape[1] for s in sh) + 2
-        ch = max(s.shape[0] for s in sh) + 1
+        cw = max(s.shape[1] for s in sh) + 2 * density
+        ch = max(s.shape[0] for s in sh) + density
         sheet = np.zeros((ch, cw * len(sh), 4), np.uint8)
         for i, s in enumerate(sh):
             rgb = Image.fromarray(s[..., :3]).quantize(palette=pal_img, dither=Image.Dither.NONE).convert('RGB')
@@ -105,9 +105,21 @@ def main():
             h, w = s.shape[:2]
             ox = (cw - w) // 2; oy = ch - h          # bottom-centre aligned in its cell
             sheet[oy:oy + h, i * cw + ox:i * cw + ox + w] = np.dstack([q, a]).astype(np.uint8)
-        Image.fromarray(sheet, 'RGBA').save(os.path.join(ROOT, name + '.png'))
-        meta[name] = {'w': cw, 'h': ch, 'frames': len(sh), 'ax': cw // 2, 'ay': ch - 1}
-        print(name, len(sh), 'frames', f'{cw}x{ch}')
+        key = name if density == 1 else f'{name}@{density}x'
+        Image.fromarray(sheet, 'RGBA').save(os.path.join(ROOT, key + '.png'))
+        meta[key] = {'w': cw, 'h': ch, 'frames': len(sh), 'ax': cw // 2, 'ay': ch - 1, 'density': density}
+        print(key, len(sh), 'frames', f'{cw}x{ch}')
+
+
+def main():
+    strips = {}
+    for name, f in STRIPS.items():
+        rgb, mask = load(os.path.join(SRC, f))
+        fr = frames(mask)
+        strips[name] = (rgb, fr, HEAD_H / np.median([head_height(rgb, m) for m in fr]))
+    meta = {}
+    build(strips, 1, 28, meta)
+    build(strips, HD, 48, meta)
     json.dump(meta, open(os.path.join(ROOT, 'sprites.json'), 'w'), indent=1)
 
 

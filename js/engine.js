@@ -4,6 +4,12 @@
 (() => {
   const W = PX.W, H = PX.H, $ = s => document.querySelector(s);
   const cv = $('#map'), ctx = cv.getContext('2d');
+  // high-res layer over the map, at screen resolution: themes may draw detailed sprites on ctx.hd
+  // (same world coordinates, but finer than one world pixel). Clicks pass through to the map.
+  const hd = document.createElement('canvas'); hd.id = 'hd';
+  hd.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;image-rendering:pixelated';
+  cv.after(hd);
+  const hctx = hd.getContext('2d'); ctx.hd = hctx;
   const stageBox = $('#stagebox'), overlay = $('#overlay'), mapCell = $('#mapcell');
   const mini = $('#mini'), mctx = mini.getContext('2d');
   const staticLayer = document.createElement('canvas'); staticLayer.width = W; staticLayer.height = H;
@@ -543,6 +549,7 @@
     const r = mapCell.getBoundingClientRect();
     scale = Math.max(1, Math.min((r.width - 8) / W, (r.height - 8) / H));
     stageBox.style.width = W * scale + 'px'; stageBox.style.height = H * scale + 'px';
+    const dpr = devicePixelRatio || 1; hd.width = Math.round(W * scale * dpr); hd.height = Math.round(H * scale * dpr);
     document.querySelectorAll('.sign').forEach(s => { s.style.left = s.dataset.x * scale + 'px'; s.style.top = s.dataset.y * scale + 'px'; });
     document.documentElement.style.setProperty('--px', scale);
   }
@@ -760,6 +767,8 @@
     tickBoss(dt);
 
     ctx.drawImage(staticLayer, 0, 0);
+    hctx.setTransform(1, 0, 0, 1, 0, 0); hctx.clearRect(0, 0, hd.width, hd.height);
+    hctx.setTransform(hd.width / W, 0, 0, hd.height / H, 0, 0); hctx.imageSmoothingEnabled = false;
     theme.drawAmbient(ctx, t);
     theme.drawCarrier(ctx, car, t);
     boss.frame = boss.walking ? (Math.floor(t * 8) % 2 ? 1 : 2) : 0;

@@ -37,28 +37,31 @@
     tinted.set(id, cv); return cv;
   }
 
-  // draw frame `f` of sheet `name`, its bottom-centre at (x, y)
-  function blit(c, name, color, f, x, y, flip, scale = 1) {
+  // draw frame `f` of sheet `name`, its bottom-centre at world (x, y). With hd, the 4x sheet goes on the
+  // high-res layer (c.hd) at the same world size, so the sprite keeps 4x the detail.
+  function blit(c, name, color, f, x, y, flip, scale = 1, hd = false) {
+    if (hd && c.hd && SHEETS[name + '@4x']) { c = c.hd; name += '@4x'; }
     const s = SHEETS[name], src = sheetFor(name, color); if (!s || !src) return false;
-    const w = Math.round(s.w * scale), h = Math.round(s.h * scale);
+    const d = s.density || 1, w = s.w * scale / d, h = s.h * scale / d;
     c.save(); c.translate(Math.round(x), Math.round(y));
     if (flip) c.scale(-1, 1);
-    c.drawImage(src, (f % s.frames) * s.w, 0, s.w, s.h, -Math.round(s.ax * scale), -h, w, h);
+    c.drawImage(src, (f % s.frames) * s.w, 0, s.w, s.h, -s.ax * scale / d, -h, w, h);
     c.restore(); return true;
   }
 
-  registerTheme({
+  function spriteTheme(id, name, icon, hd) {
+    return {
     ...M,
-    id: 'marketSprite',
-    name: 'Floating Market (sprite test)',
-    icon: '🧺',
+    id,
+    name,
+    icon,
 
     drawChar(c, a, frame, t) {
       const scale = a.isSub ? .75 : 1, inBoat = a.walking || !onRaft(a.x, a.y);
       let flip = a.flip;
       if (a.mode === 'error') flip = Math.sin(t * 10) > 0;
       if (!inBoat) {
-        if (!blit(c, 'foot_idle', a.color, Math.floor(t * 2 + a.id) , a.x, a.y, flip, scale)) M.drawChar.call(this, c, a, frame, t);
+        if (!blit(c, 'foot_idle', a.color, Math.floor(t * 2 + a.id) , a.x, a.y, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
         return;
       }
       const bob = Math.round(Math.sin(t * 2.2 + a.id) * .6), x = a.x, y = a.y + bob;
@@ -66,8 +69,11 @@
       PX.ellipse(c, Math.round(x), Math.round(y + 3), 13 * scale, 2, 'rgba(10,50,50,.35)');
       // the AI strip is a slow idle loop; while moving it simply runs faster (no paddle strip yet)
       const f = Math.floor(t * (a.walking ? 8 : 3) + a.id);
-      if (!blit(c, 'boat_idle', a.color, f, x, y + 3, flip, scale)) M.drawChar.call(this, c, a, frame, t);
+      if (!blit(c, 'boat_idle', a.color, f, x, y + 3, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
     },
     drawPortrait(c, a) { if (!blit(c, 'foot_idle', a.color, 0, a.x, 25, false)) M.drawPortrait.call(this, c, a); },
-  });
+  }
+  }
+  registerTheme(spriteTheme('marketSprite', 'Floating Market (sprite test)', '🧺', false));
+  registerTheme(spriteTheme('marketSpriteHD', 'Floating Market (sprite HD test)', '🔍', true));
 })();

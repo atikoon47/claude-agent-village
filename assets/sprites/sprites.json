@@ -4,13 +4,31 @@
   "h": 22,
   "frames": 4,
   "ax": 15,
-  "ay": 21
+  "ay": 21,
+  "density": 1
  },
  "foot_idle": {
   "w": 13,
   "h": 25,
   "frames": 3,
   "ax": 6,
-  "ay": 24
+  "ay": 24,
+  "density": 1
+ },
+ "boat_idle@4x": {
+  "w": 124,
+  "h": 90,
+  "frames": 4,
+  "ax": 62,
+  "ay": 89,
+  "density": 4
+ },
+ "foot_idle@4x": {
+  "w": 51,
+  "h": 101,
+  "frames": 3,
+  "ax": 25,
+  "ay": 100,
+  "density": 4
  }
 }
