@@ -40,14 +40,16 @@
 
   // draw frame `f` of sheet `name`, its bottom-centre at world (x, y). With hd, the 4x sheet goes on the
   // high-res layer (c.hd) at the same world size, so the sprite keeps 4x the detail.
-  function blit(c, name, color, f, x, y, flip, scale = 1, hd = false) {
+  // clipY: nothing below this world y is drawn (a stall counter hides the legs)
+  function blit(c, name, color, f, x, y, flip, scale = 1, hd = false, clipY = null) {
     if (hd && c.hd && SHEETS[name + '@4x']) { c = c.hd; name += '@4x'; }
     const s = SHEETS[name], src = sheetFor(name, color); if (!s || !src) return false;
+    if (clipY != null) { c.save(); c.beginPath(); c.rect(x - 60, clipY - 120, 120, 120); c.clip(); }
     const d = s.density || 1, w = s.w * scale / d, h = s.h * scale / d;
     c.save(); c.translate(Math.round(x), Math.round(y));
     if (flip) c.scale(-1, 1);
     c.drawImage(src, (f % s.frames) * s.w, 0, s.w, s.h, -s.ax * scale / d, -(s.ay + 1) * scale / d, w, h);
-    c.restore(); return true;
+    c.restore(); if (clipY != null) c.restore(); return true;
   }
 
   // prefix picks the character's sheets (''=vendor woman, 'merchant_'=vendor man)
@@ -90,6 +92,14 @@
       const y = L.y + Math.round(Math.sin(t * 2.2) * .6);
       PX.ellipse(c, Math.round(L.x), Math.round(y + 3), 14, 2, 'rgba(10,50,50,.35)');
       blit(c, 'lead_boat_paddle', null, L.walking ? Math.floor(t * 8) : 0, L.x, y + 3, L.flip, 1, hd);
+    },
+    // vendors behind the bank stalls: woman and man in turn, standing, cut off at the counter top
+    drawStallVendor(c, x, y, col, i, t) {
+      const who = i % 2 ? 'merchant_' : '', sheet = who + 'foot_idle';
+      const counter = (this.stallFronts || []).find(([sx, , w]) => x >= sx && x <= sx + w);
+      // the sprites are ~6 px taller than the drawn vendors: sink them so the head sits where theirs did
+      if (!blit(c, sheet, col, Math.floor(t * 1.5 + i), x, y + 6, i === 2, 1, hd, counter ? counter[1] : null))
+        M.drawStallVendor ? M.drawStallVendor.call(this, c, x, y, col, i, t) : null;
     },
     drawLeadPortrait(c, x, y) { if (!blit(c, 'lead_portrait', null, 0, 8, 25, false)) M.drawLeadPortrait.call(this, c, x, y); },
     drawPortrait(c, a) { if (!blit(c, prefix + 'foot_idle', a.color, 0, a.x, 25, false)) M.drawPortrait.call(this, c, a); },
