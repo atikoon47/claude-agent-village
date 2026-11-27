@@ -7,28 +7,44 @@
   "ay": 20,
   "density": 1
  },
+ "boat_paddle": {
+  "w": 32,
+  "h": 22,
+  "frames": 6,
+  "ax": 13,
+  "ay": 21,
+  "density": 1
+ },
  "foot_idle": {
   "w": 13,
-  "h": 25,
+  "h": 27,
   "frames": 3,
   "ax": 6,
-  "ay": 23,
+  "ay": 25,
   "density": 1
  },
  "boat_idle@4x": {
   "w": 121,
-  "h": 85,
+  "h": 84,
   "frames": 4,
   "ax": 50,
   "ay": 83,
   "density": 4
  },
+ "boat_paddle@4x": {
+  "w": 130,
+  "h": 89,
+  "frames": 6,
+  "ax": 53,
+  "ay": 85,
+  "density": 4
+ },
  "foot_idle@4x": {
-  "w": 52,
-  "h": 98,
+  "w": 51,
+  "h": 108,
   "frames": 3,
   "ax": 24,
-  "ay": 95,
+  "ay": 105,
   "density": 4
  },
  "lead_desk_idle": {
@@ -40,10 +56,10 @@
   "density": 1
  },
  "lead_desk_stamp": {
-  "w": 13,
+  "w": 14,
   "h": 17,
   "frames": 4,
-  "ax": 7,
+  "ax": 8,
   "ay": 16,
   "density": 1
  },
@@ -56,11 +72,11 @@
   "density": 1
  },
  "lead_boat_paddle": {
-  "w": 37,
-  "h": 25,
+  "w": 38,
+  "h": 24,
   "frames": 4,
-  "ax": 15,
-  "ay": 22,
+  "ax": 16,
+  "ay": 23,
   "density": 1
  },
  "lead_portrait": {
@@ -80,10 +96,10 @@
   "density": 4
  },
  "lead_desk_stamp@4x": {
-  "w": 55,
-  "h": 67,
+  "w": 54,
+  "h": 68,
   "frames": 4,
-  "ax": 33,
+  "ax": 32,
   "ay": 66,
   "density": 4
  },
@@ -96,11 +112,11 @@
   "density": 4
  },
  "lead_boat_paddle@4x": {
-  "w": 151,
-  "h": 97,
+  "w": 156,
+  "h": 99,
   "frames": 4,
-  "ax": 64,
-  "ay": 91,
+  "ax": 68,
+  "ay": 93,
   "density": 4
  },
  "lead_portrait@4x": {
@@ -140,7 +156,7 @@
   "h": 101,
   "frames": 4,
   "ax": 51,
-  "ay": 99,
+  "ay": 98,
   "density": 4
  },
  "merchant_boat_idle@4x": {

@@ -25,6 +25,7 @@ KEY = [(255, 0, 255), (192, 0, 192), (128, 0, 128)]   # shirt light / mid / shad
 CHARACTERS = {
     '': ('', {                                   # the vendor woman (first test)
         'boat_idle': ('boat_idle.webp', None),
+        'boat_paddle': ('boat_paddle.webp', None),   # 2x3 grid
         'foot_idle': ('foot_idle.png', None),
     }),
     'lead_': ('lead', {                          # ป้าแดง, the harbour boss: red blouse, never recoloured
@@ -54,21 +55,30 @@ def load(path):
 def frames(mask):
     n, lab, st, _ = cv2.connectedComponentsWithStats(mask, 8)
     big = [i for i in range(1, n) if st[i, 4] > 3000]
-    bottom = max(st[i, 1] + st[i, 3] for i in big)
+    # reading order: strips are one row, grids several; a new row starts when a frame's top is below
+    # the previous row's middle
+    hmed = np.median([st[i, 3] for i in big])
+    big.sort(key=lambda i: st[i, 1])
+    row, rows, top = 0, {}, st[big[0], 1]
+    for i in big:
+        if st[i, 1] > top + hmed / 2: row, top = row + 1, st[i, 1]
+        rows[i] = row
+    big.sort(key=lambda i: (rows[i], st[i, 0]))
     out = []
-    for i in sorted(big, key=lambda i: st[i, 0]):
+    for i in big:
         x, y, w, h, _ = st[i]
         m = (lab == i)
-        # small bits (splashes, loose pixels) that sit inside this frame's box and above the label row
+        # small bits (splashes, loose pixels) whose box overlaps this frame's box, allowing a little below
+        # it for splashes under the hull; number labels sit well below and stay out
         for j in range(1, n):
             if j in big: continue
             sx, sy, sw, sh, _ = st[j]
-            if sy < bottom and sx + sw > x and sx < x + w:
+            if sx + sw > x and sx < x + w and sy < y + h + h * .15 and sy + sh > y:
                 m |= (lab == j)
         out.append(m)
     # frames that touched each other come out as one extra-wide blob: those can't be split cleanly, so drop them
     wmed = np.median([st[i, 2] for i in big])
-    keep = [k for k, i in enumerate(sorted(big, key=lambda i: st[i, 0])) if st[i, 2] < 1.4 * wmed]
+    keep = [k for k, i in enumerate(big) if st[i, 2] < 1.4 * wmed]
     if len(keep) < len(out): print(f'  dropped {len(out) - len(keep)} merged blob(s) (frames touching)')
     return [out[k] for k in keep]
 
@@ -113,6 +123,9 @@ def build(strips, density, colors, meta, shirt_kind='magenta', recolor=True):
 
     # shared palette across every frame of every sheet
     opaque = np.concatenate([s[s[..., 3] > 127][:, :3] for sh in sheets.values() for s in sh])
+    # count each distinct colour (in 8-level bins) once, so small bright details (fruit, splash) get palette
+    # entries instead of losing every slot to the big brown boat and hat
+    opaque = np.unique(opaque // 8, axis=0) * 8 + 4
     pal_img = Image.fromarray(opaque.reshape(1, -1, 3)).quantize(colors=colors, method=Image.Quantize.MEDIANCUT)
 
     for name, sh in sheets.items():
@@ -161,7 +174,7 @@ def main():
             if pick: fr = [fr[i] for i in pick]
             strips[prefix + name] = (rgb, fr, HEAD_H / np.median([head_height(rgb, m, shirt_kind) for m in fr]))
         build(strips, 1, 28, meta, shirt_kind, recolor)
-        build(strips, HD, 64, meta, shirt_kind, recolor)
+        build(strips, HD, 128, meta, shirt_kind, recolor)
     json.dump(meta, open(os.path.join(ROOT, 'sprites.json'), 'w'), indent=1)
 
 
