@@ -191,6 +191,8 @@
         R(c, 0, y, 400, 1, k < .06 ? '#1f7f8a' : k < .14 ? '#2590a0' : k < .3 ? '#2ba2b0' : k < .5 ? '#31afbb' : '#36b8c2');
       }
       PX.speckle(c, 0, WATER_TOP, 400, WATER_BOT - WATER_TOP, ['#48c4cc', '#2a98a6'], .015, rnd);
+      // a style can paint its own water over this one (it runs here, so everything after still lands on top)
+      if (this.drawCanal) this.drawCanal(c, WATER_TOP, WATER_BOT);
       // top boardwalk with a rail of pilings along the water
       R(c, 0, 54, 400, 18, '#b08050'); for (let x = 0; x < 400; x += 5) R(c, x, 54, 1, 18, '#93683e'); R(c, 0, 54, 400, 1, '#c99a64');
       R(c, 0, 71, 400, 2, '#6e4a28');
@@ -286,7 +288,8 @@
 
     drawAmbient(c, t) {
       // flowing ripples, gentle rings around the raft
-      for (const r of ripples) {
+      if (this.drawRipples) this.drawRipples(c, t, WATER_TOP, WATER_BOT);
+      else for (const r of ripples) {
         const x = Math.round((r.x + t * r.v) % 410) - 5;
         if (onRaft(x, r.y) || (x > 350 && r.y > 94 && r.y < 154)) continue;
         if (Math.sin(t * 1.5 + r.p) > -.4) R(c, x, r.y, r.l, 1, 'rgba(210,250,245,.5)');

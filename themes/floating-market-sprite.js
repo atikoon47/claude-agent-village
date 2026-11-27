@@ -58,6 +58,57 @@
   // card labels per crew slot: the market theme's "แม่ค้า..." with พ่อค้า where the character is a man
   const crewFor = man => M.crew.map((r, i) => man(i) ? r.replace('แม่ค้า', 'พ่อค้า') : r);
 
+
+  // ── HD water. Drawn on the high-res layer, on a grid of 1/n world pixel (n = whole screen pixels per world
+  // pixel), so it is still crisp pixel art, just finer, like the 4x sprites on it.
+  const SHADES = ['#16707c', '#1c7f8b', '#228e9a', '#2899a6', '#2ea5b1', '#33afba', '#38b8c2', '#3cbec7'];
+  const sub = c => 1 / Math.max(1, Math.floor(c.getTransform().a));
+  const hdRipples = Array.from({ length: 110 }, (_, i) => ({ x: Math.random() * 410, f: Math.random(), v: 2.5 + Math.random() * 4.5,
+    l: 1.5 + Math.random() * 4.5, p: Math.random() * 6.3 }));
+  const dock = (x, y) => onRaft(x, y) || (x > 348 && y > 92 && y < 156);
+
+  function drawCanal(c, top, bot) {
+    const q = sub(c), rnd = PX.rng(77);
+    // depth: dark under the banks, bright mid-canal. Rows of height q, the level dithered row by row so the
+    // steps between shades read as fine water lines instead of bands
+    for (let y = top, i = 0; y < bot; y += q, i++) {
+      const d = Math.min(y - top, bot - y) / 46, lv = Math.min(1, d) ** .7 * (SHADES.length - 1);
+      const k = Math.min(SHADES.length - 1, Math.floor(lv + [.15, .65, .4, .9][i % 4] * .9));
+      c.fillStyle = SHADES[k]; c.fillRect(0, y, 400, q);
+    }
+    // shade under the top boardwalk and the bottom rail
+    for (let i = 0; i < 6; i++) {
+      c.fillStyle = `rgba(8,48,56,${.32 - i * .05})`; c.fillRect(0, top + i * q * 2, 400, q * 2);
+      c.fillStyle = `rgba(8,48,56,${.22 - i * .035})`; c.fillRect(64, bot - (i + 1) * q * 2, 226, q * 2);
+    }
+    // wave marks: thin light crests with a darker trough under them, laid in loose rows, denser mid-canal
+    for (let n = 0; n < 900; n++) {
+      const y = top + 4 + rnd() * (bot - top - 8), d = Math.min(y - top, bot - y) / 46;
+      if (rnd() > .35 + d * .65) continue;
+      const x = Math.floor(rnd() * 400 / q) * q, yy = Math.round((y + Math.sin(x * .05) * 1.2) / q) * q, l = Math.round((1 + rnd() * 4 * (.5 + d)) / q) * q;
+      c.fillStyle = d > .5 ? 'rgba(130,225,228,.55)' : 'rgba(110,205,212,.45)'; c.fillRect(x, yy, l, q);
+      c.fillStyle = 'rgba(14,88,100,.35)'; c.fillRect(x + q, yy + q, l, q);
+    }
+    // foam where the water meets the banks
+    for (let x = 0; x < 400; x += q * 2) {
+      if (rnd() < .45) { c.fillStyle = 'rgba(225,250,245,.55)'; c.fillRect(x, top + q * (1 + Math.floor(rnd() * 3)), q * 2, q); }
+      if (x > 64 && x < 290 && rnd() < .4) { c.fillStyle = 'rgba(225,250,245,.5)'; c.fillRect(x, bot - q * (2 + Math.floor(rnd() * 3)), q * 2, q); }
+    }
+  }
+
+  // moving ripples: a crest that stretches and shrinks as it drifts, its trough one sub-pixel under it
+  function drawRipples(c, t, top, bot) {
+    const q = sub(c);
+    for (const r of hdRipples) {
+      const y = Math.round((top + 6 + r.f * (bot - top - 12)) / q) * q, x = Math.round(((r.x + t * r.v) % 410 - 5) / q) * q;
+      if (dock(x, y)) continue;
+      const s = Math.sin(t * 1.4 + r.p); if (s < -.3) continue;
+      const l = Math.round(r.l * (.6 + .4 * s) / q) * q, a = .25 + .35 * Math.max(0, s);
+      c.fillStyle = `rgba(215,252,248,${a})`; c.fillRect(x, y, l, q);
+      c.fillStyle = `rgba(12,80,92,${a * .6})`; c.fillRect(x + q, y + q, l, q);
+    }
+  }
+
   // prefix picks the character's sheets (''=vendor woman, 'merchant_'=vendor man, 'mix'=either, per agent)
   function spriteTheme(id, name, icon, hd, prefix = '') {
     const man = i => prefix === 'mix' ? MEN.has(i) : prefix === 'merchant_';
@@ -68,6 +119,10 @@
     name,
     icon,
     crew: crewFor(man),
+    // the whole scene on the high-res layer, with finer water
+    hdScene: hd,
+    drawCanal: hd ? drawCanal : undefined,
+    drawRipples: hd ? drawRipples : undefined,
 
     drawChar(c, a, frame, t) {
       const p = who(a), scale = a.isSub ? .75 : 1, inBoat = a.walking || !onRaft(a.x, a.y);

@@ -14,6 +14,16 @@
   const mini = $('#mini'), mctx = mini.getContext('2d');
   const staticLayer = document.createElement('canvas'); staticLayer.width = W; staticLayer.height = H;
   const sctx = staticLayer.getContext('2d', { willReadFrequently: true });
+  // themes with hdScene draw the whole frame on the high-res layer: the static scene is rendered at screen
+  // resolution (so it can have detail finer than a world pixel) and everything else keeps its draw order
+  const staticHD = document.createElement('canvas'), shctx = staticHD.getContext('2d');
+  hctx.hd = hctx;
+  function renderStaticHD() {
+    if (!theme || !theme.hdScene) return;
+    staticHD.width = hd.width; staticHD.height = hd.height;
+    shctx.setTransform(hd.width / W, 0, 0, hd.height / H, 0, 0); shctx.imageSmoothingEnabled = false;
+    theme.drawStatic(shctx);
+  }
 
   const rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.random() * a.length | 0];
   const val = v => typeof v === 'function' ? v() : v;
@@ -549,7 +559,8 @@
     const r = mapCell.getBoundingClientRect();
     scale = Math.max(1, Math.min((r.width - 8) / W, (r.height - 8) / H));
     stageBox.style.width = W * scale + 'px'; stageBox.style.height = H * scale + 'px';
-    const dpr = devicePixelRatio || 1; hd.width = Math.round(W * scale * dpr); hd.height = Math.round(H * scale * dpr);
+    const dpr = devicePixelRatio || 1, hw = Math.round(W * scale * dpr), hh = Math.round(H * scale * dpr);
+    if (hd.width !== hw || hd.height !== hh) { hd.width = hw; hd.height = hh; renderStaticHD(); }
     document.querySelectorAll('.sign').forEach(s => { s.style.left = s.dataset.x * scale + 'px'; s.style.top = s.dataset.y * scale + 'px'; });
     document.documentElement.style.setProperty('--px', scale);
   }
@@ -566,7 +577,8 @@
     });
     // say when this theme has no art in the chosen style yet (it falls back to its pixel art)
     $('#styleNote').textContent = artStyle !== 'pixel' && theme === base ? 'ธีมนี้ยังไม่มีภาพ HD ใช้แบบพิกเซลแทน' : '';
-    sctx.clearRect(0, 0, W, H); theme.drawStatic(sctx);
+    sctx.clearRect(0, 0, W, H); theme.drawStatic(sctx);   // low-res copy: minimap (and the scene unless hdScene)
+    renderStaticHD();
     for (const [k, v] of Object.entries(theme.ui)) document.documentElement.style.setProperty('--' + k, v);
     $('#title').textContent = theme.title; $('#titleIcon').textContent = theme.icon; $('#loc').textContent = theme.location;
     document.querySelectorAll('.unitIcon').forEach(e => e.textContent = theme.unitIcon);
@@ -783,20 +795,21 @@
     tickCarrier(dt);
     tickBoss(dt);
 
-    ctx.drawImage(staticLayer, 0, 0);
     hctx.setTransform(1, 0, 0, 1, 0, 0); hctx.clearRect(0, 0, hd.width, hd.height);
+    const g = theme.hdScene ? hctx : ctx;   // where the scene is drawn this frame
+    if (theme.hdScene) hctx.drawImage(staticHD, 0, 0); else ctx.drawImage(staticLayer, 0, 0);
     hctx.setTransform(hd.width / W, 0, 0, hd.height / H, 0, 0); hctx.imageSmoothingEnabled = false;
-    theme.drawAmbient(ctx, t);
-    theme.drawCarrier(ctx, car, t);
+    theme.drawAmbient(g, t);
+    theme.drawCarrier(g, car, t);
     boss.frame = boss.walking ? (Math.floor(t * 8) % 2 ? 1 : 2) : 0;
-    theme.drawLead(ctx, t, permQueue.length > 0, boss);
+    theme.drawLead(g, t, permQueue.length > 0, boss);
     const drawList = agents.filter(a => !a.hidden); if (!boss.atDesk) drawList.push({ isBoss: true, y: boss.y });
     for (const a of drawList.sort((p, q) => p.y - q.y)) {
-      if (a.isBoss) { theme.drawLeadChar(ctx, boss, t); continue; }
+      if (a.isBoss) { theme.drawLeadChar(g, boss, t); continue; }
       const frameN = a.walking ? (Math.floor(t * 8) % 2 ? 1 : 2) : 0;
       const jit = a.mode === 'error' ? Math.round(Math.sin(t * 30)) : 0;
-      theme.drawChar(ctx, { ...a, x: a.x + jit }, frameN, t);
-      if (a.carry) theme.drawCarry(ctx, Math.round(a.x), Math.round(a.y));
+      theme.drawChar(g, { ...a, x: a.x + jit }, frameN, t);
+      if (a.carry) theme.drawCarry(g, Math.round(a.x), Math.round(a.y));
       a.bub.style.transform = `translate(${a.x * scale}px,${(a.y - 22) * scale}px) translate(-50%,-100%)`;
       a.tag.style.transform = `translate(${a.x * scale}px,${(a.y + 1) * scale}px) translate(-50%,0)`;
       a.bub.classList.toggle('perm', a.mode === 'perm' && !a.approved);
@@ -806,9 +819,9 @@
     for (let i = particles.length - 1; i >= 0; i--) {
       const p = particles[i]; p.x += p.vx * rdt; p.y += p.vy * rdt; p.vy += 90 * rdt; p.life -= rdt;
       if (p.life <= 0) { particles.splice(i, 1); continue; }
-      ctx.fillStyle = p.col; ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
+      g.fillStyle = p.col; g.fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
     }
-    theme.drawWeather(ctx, t, rdt);
+    theme.drawWeather(g, t, rdt);
     { const seat = theme.leadSeat || bossFront(), bx = boss.atDesk ? seat.x : boss.x, by = boss.atDesk ? seat.y : boss.y;
       bossBub.style.display = performance.now() < bossSayUntil ? 'block' : 'none';
       bossBub.style.transform = `translate(${bx * scale}px,${(by - 23) * scale}px) translate(-50%,-100%)`; }
