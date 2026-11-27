@@ -45,11 +45,12 @@
     const d = s.density || 1, w = s.w * scale / d, h = s.h * scale / d;
     c.save(); c.translate(Math.round(x), Math.round(y));
     if (flip) c.scale(-1, 1);
-    c.drawImage(src, (f % s.frames) * s.w, 0, s.w, s.h, -s.ax * scale / d, -h, w, h);
+    c.drawImage(src, (f % s.frames) * s.w, 0, s.w, s.h, -s.ax * scale / d, -(s.ay + 1) * scale / d, w, h);
     c.restore(); return true;
   }
 
-  function spriteTheme(id, name, icon, hd) {
+  // prefix picks the character's sheets (''=vendor woman, 'merchant_'=vendor man)
+  function spriteTheme(id, name, icon, hd, prefix = '') {
     return {
     ...M,
     id,
@@ -61,19 +62,21 @@
       let flip = a.flip;
       if (a.mode === 'error') flip = Math.sin(t * 10) > 0;
       if (!inBoat) {
-        if (!blit(c, 'foot_idle', a.color, Math.floor(t * 2 + a.id) , a.x, a.y, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
+        if (!blit(c, prefix + 'foot_idle', a.color, Math.floor(t * 2 + a.id), a.x, a.y, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
         return;
       }
       const bob = Math.round(Math.sin(t * 2.2 + a.id) * .6), x = a.x, y = a.y + bob;
       if (a.walking) for (let i = 0; i < 3; i++) R(c, x + (flip ? 1 : -1) * (14 + i * 4), y + 2 + (i % 2), 3, 1, `rgba(220,255,245,${.55 - i * .15})`);
       PX.ellipse(c, Math.round(x), Math.round(y + 3), 13 * scale, 2, 'rgba(10,50,50,.35)');
-      // the AI strip is a slow idle loop; while moving it simply runs faster (no paddle strip yet)
+      // moving: the paddle strip if this character has one, else the idle loop run faster
+      const sheet = a.walking && SHEETS[prefix + 'boat_paddle'] ? prefix + 'boat_paddle' : prefix + 'boat_idle';
       const f = Math.floor(t * (a.walking ? 8 : 3) + a.id);
-      if (!blit(c, 'boat_idle', a.color, f, x, y + 3, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
+      if (!blit(c, sheet, a.color, f, x, y + 3, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
     },
-    drawPortrait(c, a) { if (!blit(c, 'foot_idle', a.color, 0, a.x, 25, false)) M.drawPortrait.call(this, c, a); },
+    drawPortrait(c, a) { if (!blit(c, prefix + 'foot_idle', a.color, 0, a.x, 25, false)) M.drawPortrait.call(this, c, a); },
   }
   }
   registerTheme(spriteTheme('marketSprite', 'Floating Market (sprite test)', '🧺', false));
   registerTheme(spriteTheme('marketSpriteHD', 'Floating Market (sprite HD test)', '🔍', true));
+  registerTheme(spriteTheme('marketMerchantHD', 'Floating Market (พ่อค้า HD test)', '👨‍🌾', true, 'merchant_'));
 })();

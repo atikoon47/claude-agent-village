@@ -20,9 +20,18 @@ SRC = os.path.join(ROOT, 'src')
 HD = 4                          # density of the high-res sheets (sheet px per world px)
 HEAD_H = 8                      # hat top to shirt collar, in world px (drawn sprites: ~10)
 KEY = [(255, 0, 255), (192, 0, 192), (128, 0, 128)]   # shirt light / mid / shadow
-STRIPS = {                      # name -> source file
-    'boat_idle': 'boat_idle.webp',
-    'foot_idle': 'foot_idle.png',
+# character -> {sheet name: (source file in assets/sprites/src/<dir>, frames to keep or None for all)}
+# Output sheets are named <prefix><sheet>, e.g. merchant_boat_paddle.png. Each character gets its own palette.
+CHARACTERS = {
+    '': ('', {                                   # the vendor woman (first test)
+        'boat_idle': ('boat_idle.webp', None),
+        'foot_idle': ('foot_idle.png', None),
+    }),
+    'merchant_': ('merchant', {                  # the vendor man
+        'boat_paddle': ('boat_paddle.webp', None),
+        'boat_idle': ('boat_paddle.webp', [0]),  # no idle strip yet: the first paddle frame, bobbed by the game
+        'foot_idle': ('foot_idle.png', None),
+    }),
 }
 
 
@@ -50,7 +59,11 @@ def frames(mask):
             if sy < bottom and sx + sw > x and sx < x + w:
                 m |= (lab == j)
         out.append(m)
-    return out
+    # frames that touched each other come out as one extra-wide blob: those can't be split cleanly, so drop them
+    wmed = np.median([st[i, 2] for i in big])
+    keep = [k for k, i in enumerate(sorted(big, key=lambda i: st[i, 0])) if st[i, 2] < 1.4 * wmed]
+    if len(keep) < len(out): print(f'  dropped {len(out) - len(keep)} merged blob(s) (frames touching)')
+    return [out[k] for k in keep]
 
 
 def head_height(rgb, m):
@@ -87,39 +100,51 @@ def build(strips, density, colors, meta):
     pal_img = Image.fromarray(opaque.reshape(1, -1, 3)).quantize(colors=colors, method=Image.Quantize.MEDIANCUT)
 
     for name, sh in sheets.items():
-        cw = max(s.shape[1] for s in sh) + 2 * density
-        ch = max(s.shape[0] for s in sh) + density
-        sheet = np.zeros((ch, cw * len(sh), 4), np.uint8)
-        for i, s in enumerate(sh):
+        # quantize + key the shirt first, then line frames up on the shirt's centre: the seated body is what
+        # stays still, while a paddle dipping below the hull would make a bounding-box alignment jump
+        done = []
+        for s in sh:
             rgb = Image.fromarray(s[..., :3]).quantize(palette=pal_img, dither=Image.Dither.NONE).convert('RGB')
             q = np.array(rgb).astype(int)
             r, g, b = q[..., 0], q[..., 1], q[..., 2]
-            shirt = (r > 110) & (b > 90) & (g < 0.55 * np.minimum(r, b)) & (r - g > 70)
+            a = s[..., 3] > 110
+            shirt = a & (r > 110) & (b > 90) & (g < 0.55 * np.minimum(r, b)) & (r - g > 70)
             lum = (r + g + b) / 3
             if shirt.any():
                 t1, t2 = np.percentile(lum[shirt], [66, 25])
                 q[shirt & (lum >= t1)] = KEY[0]
                 q[shirt & (lum < t1) & (lum >= t2)] = KEY[1]
                 q[shirt & (lum < t2)] = KEY[2]
-            a = np.where(s[..., 3] > 110, 255, 0)
-            h, w = s.shape[:2]
-            ox = (cw - w) // 2; oy = ch - h          # bottom-centre aligned in its cell
-            sheet[oy:oy + h, i * cw + ox:i * cw + ox + w] = np.dstack([q, a]).astype(np.uint8)
+            ys, xs = np.nonzero(shirt) if shirt.any() else np.nonzero(a)
+            done.append((np.dstack([q, np.where(a, 255, 0)]).astype(np.uint8), round(xs.mean()), round(ys.mean())))
+        CX = max(cx for _, cx, _ in done) + density
+        CY = max(cy for _, _, cy in done)
+        cw = max(CX - cx + im.shape[1] for im, cx, _ in done) + density
+        ch = max(CY - cy + im.shape[0] for im, _, cy in done)
+        sheet = np.zeros((ch, cw * len(done), 4), np.uint8)
+        for i, (im, cx, cy) in enumerate(done):
+            ox, oy = CX - cx, CY - cy
+            h, w = im.shape[:2]
+            sheet[oy:oy + h, i * cw + ox:i * cw + ox + w] = im
+        im0, cx0, cy0 = done[0]
+        ax, ay = CX, CY - cy0 + im0.shape[0] - 1        # anchor: under the shirt, at the first frame's bottom
         key = name if density == 1 else f'{name}@{density}x'
         Image.fromarray(sheet, 'RGBA').save(os.path.join(ROOT, key + '.png'))
-        meta[key] = {'w': cw, 'h': ch, 'frames': len(sh), 'ax': cw // 2, 'ay': ch - 1, 'density': density}
+        meta[key] = {'w': cw, 'h': ch, 'frames': len(done), 'ax': ax, 'ay': ay, 'density': density}
         print(key, len(sh), 'frames', f'{cw}x{ch}')
 
 
 def main():
-    strips = {}
-    for name, f in STRIPS.items():
-        rgb, mask = load(os.path.join(SRC, f))
-        fr = frames(mask)
-        strips[name] = (rgb, fr, HEAD_H / np.median([head_height(rgb, m) for m in fr]))
     meta = {}
-    build(strips, 1, 28, meta)
-    build(strips, HD, 48, meta)
+    for prefix, (sub, sheets) in CHARACTERS.items():
+        strips = {}
+        for name, (f, pick) in sheets.items():
+            rgb, mask = load(os.path.join(SRC, sub, f))
+            fr = frames(mask)
+            if pick: fr = [fr[i] for i in pick]
+            strips[prefix + name] = (rgb, fr, HEAD_H / np.median([head_height(rgb, m) for m in fr]))
+        build(strips, 1, 28, meta)
+        build(strips, HD, 64, meta)
     json.dump(meta, open(os.path.join(ROOT, 'sprites.json'), 'w'), indent=1)
 
 
