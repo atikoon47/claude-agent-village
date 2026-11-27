@@ -46,7 +46,8 @@
     const s = SHEETS[name], src = sheetFor(name, color); if (!s || !src) return false;
     if (clipY != null) { c.save(); c.beginPath(); c.rect(x - 60, clipY - 120, 120, 120); c.clip(); }
     const d = s.density || 1, w = s.w * scale / d, h = s.h * scale / d;
-    c.save(); c.translate(Math.round(x), Math.round(y));
+    // snap to the finest whole screen pixel: world pixels on the low-res map, sub-pixels on the high-res layer
+    const q = sub(c); c.save(); c.translate(Math.round(x / q) * q, Math.round(y / q) * q);
     if (flip) c.scale(-1, 1);
     c.drawImage(src, (f % s.frames) * s.w, 0, s.w, s.h, -s.ax * scale / d, -(s.ay + 1) * scale / d, w, h);
     c.restore(); if (clipY != null) c.restore(); return true;
@@ -109,18 +110,9 @@
     }
   }
 
-  // Resting loops: frames where the eyes are closed. Played in turn with the others they made the vendors blink
-  // every second or so; instead the open-eye frames loop and a closed one flashes in for a moment every ~4 s.
-  const BLINK = { boat_idle: [2], merchant_boat_idle: [2, 4], merchant_foot_idle: [2] };
-  function restFrame(sheet, t, fps, seed) {
-    const s = SHEETS[sheet + '@4x'] || SHEETS[sheet], shut = BLINK[sheet];
-    if (!s || !shut) return Math.floor(t * fps + seed);
-    const open = [...Array(s.frames).keys()].filter(i => !shut.includes(i));
-    const period = 3.4 + (seed * 0.37) % 1.6, ph = (t + seed * 1.3) % period;
-    if (ph < .13) return shut[Math.floor((t + seed) / period) % shut.length];
-    return open[Math.floor(t * fps + seed) % open.length];
-  }
-
+  // Resting poses (boat_idle, foot_idle) hold one still frame. Gemini redraws every frame slightly differently all over (25-70% of the
+  // figure's pixels change from one frame to the next, blink frames included), so looping them made resting
+  // vendors shimmer and blink non-stop. The boat's bob keeps them alive; frame 0 has the eyes open in every sheet.
   // prefix picks the character's sheets (''=vendor woman, 'merchant_'=vendor man, 'mix'=either, per agent)
   function spriteTheme(id, name, icon, hd, prefix = '') {
     const man = i => prefix === 'mix' ? MEN.has(i) : prefix === 'merchant_';
@@ -141,10 +133,10 @@
       let flip = a.flip;
       if (a.mode === 'error') flip = Math.sin(t * 10) > 0;
       if (!inBoat) {
-        if (!blit(c, p + 'foot_idle', a.color, restFrame(p + 'foot_idle', t, 2, a.id), a.x, a.y, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
+        if (!blit(c, p + 'foot_idle', a.color, 0, a.x, a.y, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
         return;
       }
-      const bob = Math.round(Math.sin(t * 2.2 + a.id) * .6), x = a.x, y = a.y + bob;
+      const bob = Math.sin(t * 2.2 + a.id) * .6, x = a.x, y = a.y + bob;   // blit snaps it: smooth in HD
       if (a.walking) for (let i = 0; i < 3; i++) R(c, x + (flip ? 1 : -1) * (14 + i * 4), y + 2 + (i % 2), 3, 1, `rgba(220,255,245,${.55 - i * .15})`);
       PX.ellipse(c, Math.round(x), Math.round(y + 3), 13 * scale, 2, 'rgba(10,50,50,.35)');
       // moving: the paddle strip if this character has one, else the idle loop run faster.
@@ -155,7 +147,7 @@
       const working = !a.walking && !asking && (a.mode === 'work' || a.mode === 'live') && SHEETS[p + 'boat_work'];
       const sheet = asking ? p + 'boat_ask' : working ? p + 'boat_work'
         : a.walking && SHEETS[p + 'boat_paddle'] ? p + 'boat_paddle' : p + 'boat_idle';
-      const f = sheet === p + 'boat_idle' ? restFrame(sheet, t, 3, a.id) : Math.floor(t * (a.walking ? 8 : asking || working ? 5 : 3) + a.id);
+      const f = sheet === p + 'boat_idle' ? 0 : Math.floor(t * (a.walking ? 8 : 5) + a.id);
       if (!blit(c, sheet, a.color, f, x, y + 3, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
     },
     // ป้าแดง: at her desk in the permission centre, or paddling out to check on someone
@@ -171,7 +163,7 @@
     },
     drawLeadChar(c, L, t) {
       if (!SHEETS.lead_boat_paddle) return M.drawLeadChar.call(this, c, L, t);
-      const y = L.y + Math.round(Math.sin(t * 2.2) * .6);
+      const y = L.y + Math.sin(t * 2.2) * .6;
       PX.ellipse(c, Math.round(L.x), Math.round(y + 3), 14, 2, 'rgba(10,50,50,.35)');
       blit(c, 'lead_boat_paddle', null, L.walking ? Math.floor(t * 8) : 0, L.x, y + 3, L.flip, 1, hd);
     },
@@ -180,7 +172,7 @@
       const who = i % 2 ? 'merchant_' : '', sheet = who + 'foot_idle';
       const counter = (this.stallFronts || []).find(([sx, , w]) => x >= sx && x <= sx + w);
       // the sprites are ~6 px taller than the drawn vendors: sink them so the head sits where theirs did
-      if (!blit(c, sheet, col, restFrame(sheet, t, 1.5, i + 7), x, y + 6, i === 2, 1, hd, counter ? counter[1] : null))
+      if (!blit(c, sheet, col, 0, x, y + 6, i === 2, 1, hd, counter ? counter[1] : null))
         M.drawStallVendor ? M.drawStallVendor.call(this, c, x, y, col, i, t) : null;
     },
     drawLeadPortrait(c, x, y) { if (!blit(c, 'lead_portrait', null, 0, 8, 25, false)) M.drawLeadPortrait.call(this, c, x, y); },
