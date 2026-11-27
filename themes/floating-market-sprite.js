@@ -114,8 +114,6 @@
     drawPortrait(c, a) { if (!blit(c, who(a) + 'foot_idle', a.color, 0, a.x, 25, false)) M.drawPortrait.call(this, c, a); },
   }
   }
-  registerTheme(spriteTheme('marketSprite', 'Floating Market (sprite test)', '🧺', false));
-  registerTheme(spriteTheme('marketSpriteHD', 'Floating Market (sprite HD test)', '🔍', true));
-  registerTheme(spriteTheme('marketMerchantHD', 'Floating Market (พ่อค้า HD test)', '👨‍🌾', true, 'merchant_'));
-  registerTheme(spriteTheme('marketMixHD', 'Floating Market (พ่อค้า+แม่ค้า HD test)', '🎲', true, 'mix'));
+  // vendor men and women by crew slot, sprites on the high-res layer
+  registerTheme(spriteTheme('marketHD', 'Floating Market HD', '🧺', true, 'mix'));
 })();
