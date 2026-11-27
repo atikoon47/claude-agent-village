@@ -17,10 +17,18 @@
  },
  "boat_ask": {
   "w": 31,
-  "h": 26,
+  "h": 27,
   "frames": 6,
   "ax": 14,
-  "ay": 25,
+  "ay": 26,
+  "density": 1
+ },
+ "boat_work": {
+  "w": 29,
+  "h": 20,
+  "frames": 6,
+  "ax": 12,
+  "ay": 18,
   "density": 1
  },
  "foot_idle": {
@@ -53,6 +61,14 @@
   "frames": 6,
   "ax": 56,
   "ay": 106,
+  "density": 4
+ },
+ "boat_work@4x": {
+  "w": 117,
+  "h": 76,
+  "frames": 6,
+  "ax": 49,
+  "ay": 74,
   "density": 4
  },
  "foot_idle@4x": {

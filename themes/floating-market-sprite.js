@@ -84,8 +84,11 @@
       // queued at ป้าแดง's desk for approval: waving an order slip
       const asking = !a.walking && a.cur && a.cur.type === 'perm' && !a.approved && SHEETS[p + 'boat_ask'];
       if (asking) flip = a.x > this.places.permission.x;   // turn to face ป้าแดง's desk with the slip
-      const sheet = asking ? p + 'boat_ask' : a.walking && SHEETS[p + 'boat_paddle'] ? p + 'boat_paddle' : p + 'boat_idle';
-      const f = Math.floor(t * (a.walking ? 8 : asking ? 5 : 3) + a.id);
+      // busy at a stop (taking a job, running a tool, wrapping up): packing fruit
+      const working = !a.walking && !asking && (a.mode === 'work' || a.mode === 'live') && SHEETS[p + 'boat_work'];
+      const sheet = asking ? p + 'boat_ask' : working ? p + 'boat_work'
+        : a.walking && SHEETS[p + 'boat_paddle'] ? p + 'boat_paddle' : p + 'boat_idle';
+      const f = Math.floor(t * (a.walking ? 8 : asking || working ? 5 : 3) + a.id);
       if (!blit(c, sheet, a.color, f, x, y + 3, flip, scale, hd)) M.drawChar.call(this, c, a, frame, t);
     },
     // ป้าแดง: at her desk in the permission centre, or paddling out to check on someone

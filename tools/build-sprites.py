@@ -35,6 +35,7 @@ THEMES = {
             # waiting for approval: waves an order slip (2x3 grid). Gemini drew her hat bigger here, so head
             # height alone made the boat ~20% small: scaled to match the idle boat's hull
             'boat_ask': ('boat_ask.webp', None, 1.2),
+            'boat_work': ('boat_work.webp', None, .87),    # packing fruit in a banana leaf (2x3 grid); boat drawn ~14% big
             'foot_idle': ('foot_idle.png', None),
         }),
         'lead_': ('lead', {                          # ป้าแดง, the harbour boss: red blouse, never recoloured
