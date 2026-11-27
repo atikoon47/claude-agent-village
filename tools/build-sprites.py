@@ -37,7 +37,7 @@ CHARACTERS = {
     }, 'red', False),
     'merchant_': ('merchant', {                  # the vendor man
         'boat_paddle': ('boat_paddle.webp', None),
-        'boat_idle': ('boat_paddle.webp', [0]),  # no idle strip yet: the first paddle frame, bobbed by the game
+        'boat_idle': ('boat_idle.webp', None),     # 2x3 grid
         'foot_idle': ('foot_idle.png', None),
     }),
 }

@@ -136,9 +136,9 @@
   "density": 1
  },
  "merchant_boat_idle": {
-  "w": 35,
-  "h": 25,
-  "frames": 1,
+  "w": 36,
+  "h": 26,
+  "frames": 6,
   "ax": 13,
   "ay": 24,
   "density": 1
@@ -160,11 +160,11 @@
   "density": 4
  },
  "merchant_boat_idle@4x": {
-  "w": 138,
-  "h": 99,
-  "frames": 1,
-  "ax": 51,
-  "ay": 98,
+  "w": 143,
+  "h": 100,
+  "frames": 6,
+  "ax": 53,
+  "ay": 96,
   "density": 4
  },
  "merchant_foot_idle@4x": {
